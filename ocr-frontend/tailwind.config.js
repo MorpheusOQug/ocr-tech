@@ -14,7 +14,7 @@ module.exports = {
           dark: '#1d4e94',
         },
         accent: '#65a4ff',
-        darkBg: '#1a1a2e',
+        darkBg: '#121212',
         darkSurface: '#222249',
         darkBorder: '#2a2a5a',
         darkText: {
@@ -24,7 +24,9 @@ module.exports = {
         lightText: {
           primary: '#333333',
           secondary: '#666666'
-        }
+        },
+        darkSecondary: '#1f1f1f',
+        darkAccent: '#2d2d2d',
       },
       backgroundColor: theme => ({
         ...theme('colors'),
@@ -101,6 +103,20 @@ module.exports = {
           },
         },
       }),
+      animation: {
+        'fade-in-down': 'fadeInDown 0.5s ease-out',
+        'fade-out-up': 'fadeOutUp 0.5s ease-in forwards',
+      },
+      keyframes: {
+        fadeInDown: {
+          '0%': { opacity: '0', transform: 'translateY(-20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        fadeOutUp: {
+          '0%': { opacity: '1', transform: 'translateY(0)' },
+          '100%': { opacity: '0', transform: 'translateY(-20px)' },
+        },
+      },
     },
   },
   plugins: [

@@ -2,11 +2,14 @@ import React, { useState, useEffect, useContext, useRef } from "react";
 import axios from "axios";
 import { ThemeContext } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import { useValidation } from "../context/ValidationContext";
 import ReactMarkdown from 'react-markdown';
+import { useNavigate } from "react-router-dom";
 
 function OCRPage() {
     const { darkMode, toggleDarkMode } = useContext(ThemeContext);
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const { validateFile } = useValidation();
     const [image, setImage] = useState(null);
     const [preview, setPreview] = useState(null);
     const [ocrResult, setOcrResult] = useState(null);
@@ -19,11 +22,15 @@ function OCRPage() {
         { id: 2, name: 'scan2.png', date: '2024-03-09', status: 'completed', type: 'image' },
         { id: 3, name: 'text3.jpg', date: '2024-03-08', status: 'completed', type: 'image' },
     ]);
-    const [activePage, setActivePage] = useState('home');
+    const [activePage, setActivePage] = useState(() => {
+        const savedPage = localStorage.getItem('activePage');
+        return savedPage || 'home';
+    });
     const resultBoxRef = useRef(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
     // Check server connection when component loads
     useEffect(() => {
@@ -39,6 +46,11 @@ function OCRPage() {
         
         checkServerStatus();
     }, []);
+
+    // Save activePage to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem('activePage', activePage);
+    }, [activePage]);
 
     // Scroll to bottom of results when new content is added
     useEffect(() => {
@@ -71,16 +83,10 @@ function OCRPage() {
     const handleSelectedFile = (file) => {
         setError(null); // Clear any previous errors
         
-        // Validate file type
-        const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'application/pdf'];
-        if (!validImageTypes.includes(file.type)) {
-            setError('Please upload a valid image (JPG, PNG, GIF, BMP) or PDF file.');
-            return;
-        }
-        
-        // Validate file size (max 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            setError('File size exceeds 10MB limit. Please upload a smaller file.');
+        // Validate file using validation context
+        const validation = validateFile(file);
+        if (!validation.isValid) {
+            setError(validation.error);
             return;
         }
         
@@ -99,7 +105,10 @@ function OCRPage() {
     };
 
     const handleUpload = async () => {
-        if (!image) return;
+        if (!image) {
+            setError('Please select a file to upload');
+            return;
+        }
 
         // Animate upload process
         setUploadProgress(0);
@@ -170,7 +179,7 @@ function OCRPage() {
         e.preventDefault();
         e.stopPropagation();
         const file = e.dataTransfer.files[0];
-        if (file && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
+        if (file) {
             handleSelectedFile(file);
         }
     };
@@ -342,7 +351,7 @@ function OCRPage() {
                                                     </button>
                                                     <button className="flex items-center px-3 py-1.5 text-xs bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-800/50 transition">
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4-4v12" />
                                                         </svg>
                                                         Export
                                                     </button>
@@ -623,7 +632,7 @@ function OCRPage() {
                                                         </button>
                                                         <button className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 flex items-center">
                                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4 4m4 4V4" />
                                                             </svg>
                                                             Download
                                                         </button>
@@ -775,6 +784,11 @@ function OCRPage() {
         }
     };
 
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
             {/* Sidebar */}
@@ -852,7 +866,10 @@ function OCRPage() {
                     </ul>
                 </nav>
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                    <button className="w-full flex items-center space-x-3 p-3 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors duration-200">
+                    <button 
+                        onClick={handleLogout}
+                        className="w-full flex items-center space-x-3 p-3 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors duration-200"
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
