@@ -14,9 +14,6 @@ function Login() {
     });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showAlert, setShowAlert] = useState(false);
-    const [alertMessage, setAlertMessage] = useState('');
-    
     const navigate = useNavigate();
     const { login, isAuthenticated } = useAuth();
     const { validateRequired } = useValidation();
@@ -27,16 +24,6 @@ function Login() {
             navigate('/ocr');
         }
     }, [isAuthenticated, navigate]);
-
-    // Auto-hide alert after 5 seconds
-    useEffect(() => {
-        if (showAlert) {
-            const timer = setTimeout(() => {
-                setShowAlert(false);
-            }, 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [showAlert]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -72,11 +59,6 @@ function Login() {
         return Object.keys(newErrors).length === 0;
     };
 
-    const showErrorAlert = (message) => {
-        setAlertMessage(message);
-        setShowAlert(true);
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         
@@ -108,12 +90,9 @@ function Login() {
             login(userData);
             navigate('/ocr'); // Redirect to OCR page on successful login
         } catch (error) {
-            // Hiển thị lỗi trong giao diện thay vì console
-            const errorMessage = error.response?.data?.message || 'Invalid credentials. Please check your username and password.';
-            showErrorAlert(errorMessage);
-            
+            console.error('Login error:', error);
             setErrors({
-                submit: errorMessage
+                submit: error.response?.data?.message || 'Invalid credentials. Please check your username and password.'
             });
         } finally {
             setIsSubmitting(false);
@@ -122,31 +101,6 @@ function Login() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-darkBg py-12 px-4 sm:px-6 lg:px-8">
-            {/* Alert notification */}
-            {showAlert && (
-                <div className="fixed top-4 right-4 max-w-md bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-lg z-50 animate-fade-in-down">
-                    <div className="flex items-center">
-                        <div className="py-1">
-                            <svg className="h-6 w-6 text-red-500 mr-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="font-bold">Login Failed</p>
-                            <p className="text-sm">{alertMessage}</p>
-                        </div>
-                        <button 
-                            className="ml-auto bg-transparent text-red-500 hover:text-red-700"
-                            onClick={() => setShowAlert(false)}
-                        >
-                            <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            )}
-            
             <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
                 <div>
                     <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
