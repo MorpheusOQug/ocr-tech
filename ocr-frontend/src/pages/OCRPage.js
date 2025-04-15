@@ -3,7 +3,6 @@ import axios from "axios";
 import { ThemeContext } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { useValidation } from "../context/ValidationContext";
-import ReactMarkdown from 'react-markdown';
 import { useNavigate } from "react-router-dom";
 import DocumentsHistory from "./DocumentsHistory";
 import Settings from "./Settings";
