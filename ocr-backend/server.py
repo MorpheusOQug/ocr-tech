@@ -1,5 +1,6 @@
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 import torch
 import torchvision.transforms as T
 from PIL import Image
@@ -10,6 +11,9 @@ import os
 import sys
 import signal
 import warnings
+import json
+import subprocess
+from typing import Dict, Any, Optional
 
 # Suppress timm deprecation warnings
 warnings.filterwarnings("ignore", category=FutureWarning, module="timm.models.layers")
@@ -103,6 +107,95 @@ async def ocr(
 @app.get("/health")
 def health_check():
     return {"status": "online"}
+
+# Export endpoint
+@app.post("/export")
+async def export_document(
+    data: Dict[str, Any] = Body(...)
+):
+    try:
+        content = data.get("content", "")
+        format = data.get("format", "")
+        file_name = data.get("fileName", "ocr-result")
+        
+        print(f"Export request received: format={format}, fileName={file_name}")
+        
+        # Validate inputs
+        if not content:
+            return {"error": "Content is required"}
+        
+        if format not in ["docx", "pdf"]:
+            return {"error": f"Invalid format: {format}. Valid formats are 'docx' or 'pdf'"}
+            
+        # Create a temporary file with the content
+        safe_filename = "".join(c if c.isalnum() or c in ['-', '_'] else '_' for c in file_name)
+        temp_content_file = f"temp_{safe_filename}.txt"
+        output_file = f"{safe_filename}.{format}"
+        
+        try:
+            # Write content to temporary file
+            with open(temp_content_file, "w", encoding="utf-8") as f:
+                f.write(content)
+            
+            # Call the document generation script
+            import subprocess
+            result = subprocess.run(
+                ["node", "generate-document.js", temp_content_file, format, safe_filename],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            print(f"Document generation result: {result.stdout}")
+            
+            # Check if the file was generated
+            if not os.path.exists(output_file):
+                print(f"Error: Output file {output_file} was not created")
+                if result.stderr:
+                    print(f"Error output: {result.stderr}")
+                return {"error": "Failed to generate document"}
+            
+            # Read the generated file
+            with open(output_file, "rb") as f:
+                file_content = f.read()
+            
+            # Set the correct content type
+            if format == "docx":
+                media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            else:  # pdf
+                media_type = "application/pdf"
+            
+            # Clean up temporary files
+            try:
+                if os.path.exists(temp_content_file):
+                    os.remove(temp_content_file)
+                if os.path.exists(output_file):
+                    os.remove(output_file)
+            except Exception as e:
+                print(f"Warning: Failed to clean up temporary files: {e}")
+            
+            # Return the file
+            print(f"Returning {format} file with {len(file_content)} bytes")
+            return Response(
+                content=file_content,
+                media_type=media_type,
+                headers={
+                    "Content-Disposition": f"attachment; filename={safe_filename}.{format}"
+                }
+            )
+            
+        except subprocess.CalledProcessError as e:
+            print(f"Document generation process failed: {e}")
+            print(f"Error output: {e.stderr}")
+            return {"error": f"Document generation failed: {e.stderr}"}
+            
+        except Exception as e:
+            print(f"Error during document generation: {e}")
+            return {"error": str(e)}
+            
+    except Exception as e:
+        print(f"Error in export endpoint: {e}")
+        return {"error": str(e)}
 
 # Handle shutdown signals
 def handle_shutdown(signum, frame):

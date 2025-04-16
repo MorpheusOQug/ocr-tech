@@ -5,6 +5,7 @@ const { spawn } = require("child_process");
 const path = require("path");
 const connectDB = require('./config/db');
 const { protect } = require('./middleware/auth');
+const { handleExport } = require('./export-handler');
 require('dotenv').config();
 
 // Import routes
@@ -163,6 +164,42 @@ app.get("/health", (req, res) => {
         pythonOcr: modelLoaded ? "online" : "loading",
         progress: modelLoadingProgress
     });
+});
+
+// Export endpoint - handle document exports
+app.post("/export", async (req, res) => {
+    try {
+        const { content, format, fileName } = req.body;
+        
+        if (!content) {
+            return res.status(400).json({ error: "Content is required" });
+        }
+        
+        if (!format || !['docx', 'pdf'].includes(format)) {
+            return res.status(400).json({ error: "Valid format (docx or pdf) is required" });
+        }
+        
+        const safeFileName = (fileName || 'ocr-result').replace(/[^a-zA-Z0-9-_]/g, '_');
+        
+        console.log(`📄 Exporting content as ${format} file: ${safeFileName}.${format}`);
+        
+        const { buffer, mimetype } = await handleExport(content, format, safeFileName);
+        
+        // Set response headers
+        res.setHeader('Content-Type', mimetype);
+        res.setHeader('Content-Disposition', `attachment; filename=${safeFileName}.${format}`);
+        res.setHeader('Content-Length', buffer.length);
+        
+        // Send the file
+        res.send(buffer);
+        
+    } catch (error) {
+        console.error('Error during export:', error);
+        res.status(500).json({ 
+            error: "Error exporting document",
+            message: error.message
+        });
+    }
 });
 
 // Xử lý khi server Node.js tắt
