@@ -1,7 +1,26 @@
 import React from "react";
 import ReactMarkdown from 'react-markdown';
 
-function OCRResults({ resultBoxRef, loading, ocrResult, error, setError, user, image, preview, activeMode, setActiveMode }) {
+function OCRResults({ 
+    resultBoxRef, 
+    loading, 
+    ocrResult, 
+    error, 
+    setError, 
+    user, 
+    image, 
+    preview, 
+    activeMode, 
+    setActiveMode,
+    handleCopyResult,
+    handleExportResult,
+    handleEditStart,
+    isEditing,
+    editableText,
+    handleEditChange,
+    handleEditSave,
+    handleEditCancel
+}) {
     return (
         <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
             <div className="border-b border-gray-200 dark:border-gray-700 p-4">
@@ -146,35 +165,72 @@ function OCRResults({ resultBoxRef, loading, ocrResult, error, setError, user, i
                                         </p>
                                     </div>
                                 </div>
-                                <div className={`prose dark:prose-invert max-w-none ${
-                                    ocrResult.markdown ? 'prose-sm' : ''
-                                }`}>
-                                    <ReactMarkdown>
-                                        {ocrResult.markdown || ocrResult.text}
-                                    </ReactMarkdown>
-                                </div>
+                                
+                                {isEditing ? (
+                                    <div>
+                                        <textarea
+                                            value={editableText}
+                                            onChange={handleEditChange}
+                                            className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 rounded-md font-mono text-sm text-gray-800 dark:text-gray-200 min-h-[200px]"
+                                        />
+                                        <div className="flex gap-2 mt-3">
+                                            <button 
+                                                onClick={handleEditSave}
+                                                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                                            >
+                                                Save
+                                            </button>
+                                            <button 
+                                                onClick={handleEditCancel}
+                                                className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 transition"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className={`prose dark:prose-invert max-w-none ${
+                                        ocrResult.markdown ? 'prose-sm' : ''
+                                    }`}>
+                                        <ReactMarkdown>
+                                            {ocrResult.markdown || ocrResult.text}
+                                        </ReactMarkdown>
+                                    </div>
+                                )}
                                 
                                 {/* Action buttons for the result */}
-                                <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
-                                    <button className="flex items-center px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-800/50 transition">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-                                        </svg>
-                                        Copy
-                                    </button>
-                                    <button className="flex items-center px-3 py-1.5 text-xs bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-800/50 transition">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4-4v12" />
-                                        </svg>
-                                        Export
-                                    </button>
-                                    <button className="flex items-center px-3 py-1.5 text-xs bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 rounded hover:bg-purple-100 dark:hover:bg-purple-800/50 transition">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                        Edit
-                                    </button>
-                                </div>
+                                {!isEditing && (
+                                    <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                        <button 
+                                            id="copy-button"
+                                            onClick={handleCopyResult}
+                                            className="flex items-center px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-800/50 transition"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                            </svg>
+                                            Copy
+                                        </button>
+                                        <button 
+                                            onClick={handleExportResult}
+                                            className="flex items-center px-3 py-1.5 text-xs bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-800/50 transition"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4-4v12" />
+                                            </svg>
+                                            Export
+                                        </button>
+                                        <button 
+                                            onClick={handleEditStart}
+                                            className="flex items-center px-3 py-1.5 text-xs bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 rounded hover:bg-purple-100 dark:hover:bg-purple-800/50 transition"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            Edit
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

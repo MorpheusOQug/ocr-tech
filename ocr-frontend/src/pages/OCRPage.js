@@ -8,6 +8,7 @@ import DocumentsHistory from "./DocumentsHistory";
 import Settings from "./Settings";
 import OCRResults from "../components/OCRResults";
 import FileUpload from "../components/FileUpload";
+import ExportModal from "../components/ExportModal";
 
 function OCRPage() {
     const { darkMode, toggleDarkMode } = useContext(ThemeContext);
@@ -33,6 +34,9 @@ function OCRPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [error, setError] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editableText, setEditableText] = useState("");
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const navigate = useNavigate();
 
     // Check server connection when component loads
@@ -187,6 +191,116 @@ function OCRPage() {
         }
     };
 
+    const handleCopyResult = () => {
+        if (!ocrResult) return;
+        
+        const textToCopy = ocrResult.text || ocrResult.markdown || "";
+        
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                // Optional: Show a brief success notification
+                const originalText = document.querySelector('#copy-button').innerHTML;
+                document.querySelector('#copy-button').innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Copied!
+                `;
+                
+                setTimeout(() => {
+                    document.querySelector('#copy-button').innerHTML = originalText;
+                }, 2000);
+            })
+            .catch(err => {
+                console.error('Failed to copy text: ', err);
+                setError("Failed to copy text to clipboard.");
+            });
+    };
+
+    const handleExportResult = () => {
+        // Open the export modal instead of directly exporting
+        setIsExportModalOpen(true);
+    };
+
+    const handleExportFormat = (format) => {
+        if (!ocrResult) return;
+        
+        const content = ocrResult.text || ocrResult.markdown || "";
+        const fileName = image?.name?.split('.').slice(0, -1).join('.') || "ocr-result";
+        
+        // Handle different export formats
+        if (format === 'txt') {
+            // Export as plain text
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.download = `${fileName}.txt`;
+            a.href = url;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } 
+        else if (format === 'docx' || format === 'pdf') {
+            // In a real application, you would use a library like docx-js or pdfmake
+            // For simplicity, we'll send the request to the backend to generate these files
+            axios({
+                url: `http://127.0.0.1:8000/export`,
+                method: 'POST',
+                data: { 
+                    content: content,
+                    format: format,
+                    fileName: fileName
+                },
+                responseType: 'blob'
+            })
+            .then((response) => {
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${fileName}.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(err => {
+                console.error(`Failed to export as ${format}:`, err);
+                setError(`Failed to export as ${format}. The server may not support this format.`);
+            });
+        }
+    };
+
+    const handleEditStart = () => {
+        if (!ocrResult) return;
+        
+        // Set the editable text state with the current OCR result
+        setEditableText(ocrResult.text || ocrResult.markdown || "");
+        setIsEditing(true);
+    };
+
+    const handleEditSave = () => {
+        // Save the edited text
+        const updatedResult = { ...ocrResult };
+        if (ocrResult.text) {
+            updatedResult.text = editableText;
+        } else if (ocrResult.markdown) {
+            updatedResult.markdown = editableText;
+        }
+        
+        setOcrResult(updatedResult);
+        setIsEditing(false);
+    };
+
+    const handleEditCancel = () => {
+        setIsEditing(false);
+        setEditableText("");
+    };
+
+    const handleEditChange = (e) => {
+        setEditableText(e.target.value);
+    };
+
     const renderContent = () => {
         switch (activePage) {
             case 'home':
@@ -204,6 +318,14 @@ function OCRPage() {
                             preview={preview}
                             activeMode={activeMode}
                             setActiveMode={setActiveMode}
+                            handleCopyResult={handleCopyResult}
+                            handleExportResult={handleExportResult}
+                            handleEditStart={handleEditStart}
+                            isEditing={isEditing}
+                            editableText={editableText}
+                            handleEditChange={handleEditChange}
+                            handleEditSave={handleEditSave}
+                            handleEditCancel={handleEditCancel}
                         />
 
                         {/* Right Column: Upload Section */}
@@ -413,6 +535,14 @@ function OCRPage() {
                     </div>
                 </main>
             </div>
+
+            {/* Export Modal */}
+            <ExportModal 
+                isOpen={isExportModalOpen}
+                onClose={() => setIsExportModalOpen(false)}
+                onExport={handleExportFormat}
+                fileName={image?.name?.split('.').slice(0, -1).join('.') || "ocr-result"}
+            />
         </div>
     );
 }

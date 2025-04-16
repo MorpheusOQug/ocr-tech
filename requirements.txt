@@ -9,3 +9,7 @@ python-multipart
 timm 
 einops
 accelerate>=0.26.0
+
+python-docx
+pdfkit
+PyPDF2
