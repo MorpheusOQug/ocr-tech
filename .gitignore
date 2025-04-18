@@ -57,6 +57,7 @@ env/
 /ocr-backend/uploads/*
 !/ocr-backend/uploads/.gitkeep
 /ocr-backend/.env
+/ocr-backend/config/google-drive-key.json
 
 # Logs
 logs
@@ -83,6 +84,8 @@ tmp/
 *.pem
 *.key
 *.cert
+*.json.key
+*-key.json
 
 # Docker
 .docker-compose.override.yml
