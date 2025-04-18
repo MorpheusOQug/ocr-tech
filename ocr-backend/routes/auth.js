@@ -50,10 +50,23 @@ router.post('/register', async (req, res) => {
 // Login user
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { usernameOrEmail, password } = req.body;
 
-    // Find user by username
-    const user = await User.findOne({ username });
+    if (!usernameOrEmail || !password) {
+      return res.status(400).json({ message: 'Please provide username/email and password' });
+    }
+
+    // Check if input is email (contains @ and a domain)
+    const isEmail = usernameOrEmail.includes('@') && usernameOrEmail.includes('.');
+    
+    // Find user by username or email based on input format
+    let user;
+    if (isEmail) {
+      user = await User.findOne({ email: usernameOrEmail });
+    } else {
+      user = await User.findOne({ username: usernameOrEmail });
+    }
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }

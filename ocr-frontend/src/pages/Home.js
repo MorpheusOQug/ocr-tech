@@ -1,6 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
+import placeholders from '../utils/placeholders';
 
 function Home() {
     const navigate = useNavigate();
@@ -101,7 +102,7 @@ function Home() {
                                 </div>
                                 <div className="md:w-1/2 bg-blue-50 dark:bg-blue-900/20 p-4 flex items-center justify-center">
                                     <img 
-                                        src="https://via.placeholder.com/240x180/e3f2fd/1565c0?text=Posting+Schedule" 
+                                        src={placeholders.postingSchedule}
                                         alt="Posting Schedule" 
                                         className="rounded-lg shadow-md"
                                     />
@@ -127,7 +128,7 @@ function Home() {
                                 </div>
                                 <div className="md:w-1/2 bg-indigo-50 dark:bg-indigo-900/20 p-4 flex items-center justify-center">
                                     <img 
-                                        src="https://via.placeholder.com/240x180/e8eaf6/3949ab?text=Hashtag+Analytics" 
+                                        src={placeholders.hashtagAnalytics}
                                         alt="Hashtag Analytics" 
                                         className="rounded-lg shadow-md"
                                     />
@@ -150,7 +151,7 @@ function Home() {
                                 </div>
                                 <div className="md:w-1/2 bg-cyan-50 dark:bg-cyan-900/20 p-4 flex items-center justify-center">
                                     <img 
-                                        src="https://via.placeholder.com/240x180/e0f7fa/0097a7?text=AI+Content" 
+                                        src={placeholders.aiContent}
                                         alt="AI Content Creator" 
                                         className="rounded-lg shadow-md"
                                     />
@@ -177,7 +178,7 @@ function Home() {
                                 </div>
                                 <div className="md:w-1/2 bg-teal-50 dark:bg-teal-900/20 p-4 flex items-center justify-center">
                                     <img 
-                                        src="https://via.placeholder.com/240x180/e0f2f1/00796b?text=Data+Analytics" 
+                                        src={placeholders.dataAnalytics}
                                         alt="Data Analytics" 
                                         className="rounded-lg shadow-md"
                                     />

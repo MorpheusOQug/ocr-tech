@@ -21,11 +21,24 @@ function OCRPage() {
     const [serverStatus, setServerStatus] = useState("checking");
     const [isSidebarOpen, setSidebarOpen] = useState(true);
     const [activeMode, setActiveMode] = useState('text');
-    const [uploadedFiles, setUploadedFiles] = useState([
-        { id: 1, name: 'document1.jpg', date: '2024-03-10', status: 'completed', type: 'image' },
-        { id: 2, name: 'scan2.png', date: '2024-03-09', status: 'completed', type: 'image' },
-        { id: 3, name: 'text3.jpg', date: '2024-03-08', status: 'completed', type: 'image' },
-    ]);
+    const [uploadedFiles, setUploadedFiles] = useState(() => {
+        // Get user-specific uploads from localStorage
+        const userId = JSON.parse(localStorage.getItem('user'))?.id || 'guest';
+        const storageKey = `uploadedFiles_${userId}`;
+        const savedFiles = localStorage.getItem(storageKey);
+        return savedFiles ? JSON.parse(savedFiles) : [];
+    });
+    const [ocrResults, setOcrResults] = useState(() => {
+        // Get user-specific OCR results from localStorage
+        const userId = JSON.parse(localStorage.getItem('user'))?.id || 'guest';
+        const storageKey = `ocrResults_${userId}`;
+        const savedResults = localStorage.getItem(storageKey);
+        return savedResults ? JSON.parse(savedResults) : {};
+    });
+    const [currentDocumentId, setCurrentDocumentId] = useState(() => {
+        const savedDocumentId = localStorage.getItem('currentDocumentId');
+        return savedDocumentId || null;
+    });
     const [activePage, setActivePage] = useState(() => {
         const savedPage = localStorage.getItem('activePage');
         return savedPage || 'home';
@@ -39,11 +52,16 @@ function OCRPage() {
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const navigate = useNavigate();
 
-    // Check server connection when component loads
+    useEffect(() => {
+        if (currentDocumentId && ocrResults[currentDocumentId]) {
+            setOcrResult(ocrResults[currentDocumentId]);
+        }
+    }, [currentDocumentId, ocrResults]);
+
     useEffect(() => {
         const checkServerStatus = async () => {
             try {
-                await axios.get("http://127.0.0.1:8000/health");
+                await axios.get("http://localhost:5001/health");
                 setServerStatus("online");
             } catch (error) {
                 setServerStatus("offline");
@@ -54,19 +72,29 @@ function OCRPage() {
         checkServerStatus();
     }, []);
 
-    // Save activePage to localStorage whenever it changes
     useEffect(() => {
         localStorage.setItem('activePage', activePage);
     }, [activePage]);
 
-    // Scroll to bottom of results when new content is added
+    useEffect(() => {
+        if (currentDocumentId) {
+            localStorage.setItem('currentDocumentId', currentDocumentId);
+        }
+    }, [currentDocumentId]);
+
+    useEffect(() => {
+        // Save OCR results in user-specific storage
+        const userId = JSON.parse(localStorage.getItem('user'))?.id || 'guest';
+        const storageKey = `ocrResults_${userId}`;
+        localStorage.setItem(storageKey, JSON.stringify(ocrResults));
+    }, [ocrResults]);
+
     useEffect(() => {
         if (resultBoxRef.current && ocrResult) {
             resultBoxRef.current.scrollTop = resultBoxRef.current.scrollHeight;
         }
     }, [ocrResult]);
 
-    // Simulate upload progress
     useEffect(() => {
         let interval;
         if (isProcessing && uploadProgress < 100) {
@@ -88,9 +116,8 @@ function OCRPage() {
     };
 
     const handleSelectedFile = (file) => {
-        setError(null); // Clear any previous errors
+        setError(null);
         
-        // Validate file using validation context
         const validation = validateFile(file);
         if (!validation.isValid) {
             setError(validation.error);
@@ -98,7 +125,6 @@ function OCRPage() {
         }
         
         setImage(file);
-        // Only create preview for images, not PDFs
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -106,8 +132,15 @@ function OCRPage() {
             };
             reader.readAsDataURL(file);
         } else {
-            // For PDFs, just show the file name as preview
             setPreview(null);
+        }
+    };
+
+    const handleViewDocument = (documentId) => {
+        if (ocrResults[documentId]) {
+            setCurrentDocumentId(documentId);
+            setOcrResult(ocrResults[documentId]);
+            setActivePage('home');
         }
     };
 
@@ -117,7 +150,6 @@ function OCRPage() {
             return;
         }
 
-        // Animate upload process
         setUploadProgress(0);
         setIsProcessing(true);
         setLoading(true);
@@ -127,14 +159,24 @@ function OCRPage() {
         try {
             const formData = new FormData();
             formData.append("file", image);
-            formData.append("mode", activeMode); // Send the active mode to backend
+            formData.append("mode", activeMode);
+
+            // Lấy token xác thực từ localStorage
+            const token = localStorage.getItem('token');
+            const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+
+            // Determine which endpoint to use based on authentication
+            const endpoint = token 
+                ? "http://localhost:5001/api/ocr"  // Authenticated endpoint
+                : "http://localhost:5001/api/public/ocr"; // Public endpoint
 
             const response = await axios.post(
-                "http://127.0.0.1:8000/ocr",
+                endpoint,
                 formData,
                 {
                     headers: {
                         "Content-Type": "multipart/form-data",
+                        ...authHeader
                     },
                     onUploadProgress: (progressEvent) => {
                         const percentCompleted = Math.round(
@@ -145,21 +187,39 @@ function OCRPage() {
                 }
             );
 
-            setOcrResult(response.data);
+            const newDocumentId = response.data.documentId || Date.now().toString();
+            setCurrentDocumentId(newDocumentId);
             
-            // Add to uploaded files
-            const newFile = {
-                id: Date.now(),
-                name: image.name,
-                date: new Date().toISOString().split('T')[0],
-                status: 'completed',
-                type: image.type.startsWith('image/') ? 'image' : 'document'
+            // Lưu kết quả OCR vào state
+            const resultData = {
+                ...response.data,
+                uploadTime: new Date().toISOString()
             };
             
-            setUploadedFiles(prev => [newFile, ...prev]);
+            setOcrResult(resultData);
+            setOcrResults(prev => ({
+                ...prev,
+                [newDocumentId]: resultData
+            }));
             
-            // Store in localStorage for persistence
-            localStorage.setItem('uploadedFiles', JSON.stringify([newFile, ...uploadedFiles]));
+            // Tạo thông tin file mới với đường dẫn Google Drive (nếu có)
+            const newFile = {
+                id: newDocumentId,
+                name: image.name,
+                date: new Date().toISOString().split('T')[0],
+                type: image.type.startsWith('image/') ? 'image' : 'document',
+                mode: activeMode,
+                resultId: newDocumentId,
+                driveUrl: response.data.driveUrl || null
+            };
+            
+            const updatedFiles = [newFile, ...uploadedFiles];
+            setUploadedFiles(updatedFiles);
+            
+            // Save in user-specific storage
+            const userId = JSON.parse(localStorage.getItem('user'))?.id || 'guest';
+            const storageKey = `uploadedFiles_${userId}`;
+            localStorage.setItem(storageKey, JSON.stringify(updatedFiles));
             
         } catch (error) {
             console.error("Error processing OCR:", error);
@@ -167,11 +227,15 @@ function OCRPage() {
             setOcrResult(null);
         } finally {
             setLoading(false);
-            // Ensure progress reaches 100% before stopping
             setTimeout(() => {
                 setUploadProgress(100);
                 setTimeout(() => {
                     setIsProcessing(false);
+                    // Tự động xóa ảnh và preview sau khi xử lý thành công
+                    if (!error) {
+                        setImage(null);
+                        setPreview(null);
+                    }
                 }, 500);
             }, 500);
         }
@@ -198,7 +262,6 @@ function OCRPage() {
         
         navigator.clipboard.writeText(textToCopy)
             .then(() => {
-                // Optional: Show a brief success notification
                 const originalText = document.querySelector('#copy-button').innerHTML;
                 document.querySelector('#copy-button').innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -218,7 +281,6 @@ function OCRPage() {
     };
 
     const handleExportResult = () => {
-        // Open the export modal instead of directly exporting
         setIsExportModalOpen(true);
     };
 
@@ -228,9 +290,7 @@ function OCRPage() {
         const content = ocrResult.text || ocrResult.markdown || "";
         const fileName = image?.name?.split('.').slice(0, -1).join('.') || "ocr-result";
         
-        // Handle different export formats
         if (format === 'txt') {
-            // Export as plain text
             const blob = new Blob([content], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -242,10 +302,8 @@ function OCRPage() {
             URL.revokeObjectURL(url);
         } 
         else if (format === 'docx' || format === 'pdf') {
-            // In a real application, you would use a library like docx-js or pdfmake
-            // For simplicity, we'll send the request to the backend to generate these files
             axios({
-                url: `http://127.0.0.1:8000/export`,
+                url: `http://localhost:5001/export`,
                 method: 'POST',
                 data: { 
                     content: content,
@@ -274,13 +332,11 @@ function OCRPage() {
     const handleEditStart = () => {
         if (!ocrResult) return;
         
-        // Set the editable text state with the current OCR result
         setEditableText(ocrResult.text || ocrResult.markdown || "");
         setIsEditing(true);
     };
 
     const handleEditSave = () => {
-        // Save the edited text
         const updatedResult = { ...ocrResult };
         if (ocrResult.text) {
             updatedResult.text = editableText;
@@ -289,6 +345,14 @@ function OCRPage() {
         }
         
         setOcrResult(updatedResult);
+        
+        if (currentDocumentId) {
+            setOcrResults(prev => ({
+                ...prev,
+                [currentDocumentId]: updatedResult
+            }));
+        }
+        
         setIsEditing(false);
     };
 
@@ -306,7 +370,6 @@ function OCRPage() {
             case 'home':
                 return (
                     <div className="flex flex-col lg:flex-row gap-6 h-full">
-                        {/* Left Column: Results Section */}
                         <OCRResults 
                             resultBoxRef={resultBoxRef}
                             loading={loading}
@@ -328,7 +391,6 @@ function OCRPage() {
                             handleEditCancel={handleEditCancel}
                         />
 
-                        {/* Right Column: Upload Section */}
                         <FileUpload 
                             image={image}
                             preview={preview}
@@ -347,7 +409,7 @@ function OCRPage() {
                     </div>
                 );
             case 'files':
-                return <DocumentsHistory uploadedFiles={uploadedFiles} setActivePage={setActivePage} />;
+                return <DocumentsHistory uploadedFiles={uploadedFiles} setActivePage={setActivePage} handleViewDocument={handleViewDocument} />;
             case 'settings':
                 return <Settings />;
             default:
@@ -362,7 +424,6 @@ function OCRPage() {
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
-            {/* Sidebar */}
             <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-white dark:bg-gray-800 h-screen shadow-lg transition-all duration-300 flex flex-col flex-shrink-0 z-10`}>
                 <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
                     {isSidebarOpen && (
@@ -449,7 +510,6 @@ function OCRPage() {
                 </div>
             </div>
                 
-            {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 <header className="bg-white dark:bg-gray-800 shadow-md z-10">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -536,7 +596,6 @@ function OCRPage() {
                 </main>
             </div>
 
-            {/* Export Modal */}
             <ExportModal 
                 isOpen={isExportModalOpen}
                 onClose={() => setIsExportModalOpen(false)}

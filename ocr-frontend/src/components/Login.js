@@ -9,7 +9,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 function Login() {
     const [formData, setFormData] = useState({
-        username: '',
+        usernameOrEmail: '',
         password: ''
     });
     const [errors, setErrors] = useState({});
@@ -43,10 +43,10 @@ function Login() {
     const validateForm = () => {
         const newErrors = {};
         
-        // Validate username
-        const usernameValidation = validateRequired(formData.username, 'Username');
-        if (!usernameValidation.isValid) {
-            newErrors.username = usernameValidation.error;
+        // Validate username or email
+        const usernameOrEmailValidation = validateRequired(formData.usernameOrEmail, 'Username or Email');
+        if (!usernameOrEmailValidation.isValid) {
+            newErrors.usernameOrEmail = usernameOrEmailValidation.error;
         }
 
         // Validate password
@@ -71,7 +71,7 @@ function Login() {
         try {
             // Call backend API to log in user
             const response = await axios.post(`${API_URL}/auth/login`, {
-                username: formData.username,
+                usernameOrEmail: formData.usernameOrEmail,
                 password: formData.password
             });
             
@@ -92,7 +92,7 @@ function Login() {
         } catch (error) {
             console.error('Login error:', error);
             setErrors({
-                submit: error.response?.data?.message || 'Invalid credentials. Please check your username and password.'
+                submit: error.response?.data?.message || 'Invalid credentials. Please check your username/email and password.'
             });
         } finally {
             setIsSubmitting(false);
@@ -123,21 +123,21 @@ function Login() {
                     
                     <div className="rounded-md -space-y-px">
                         <div className="mb-4">
-                            <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Username
+                            <label htmlFor="usernameOrEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Username or Email
                             </label>
                             <input
-                                id="username"
-                                name="username"
+                                id="usernameOrEmail"
+                                name="usernameOrEmail"
                                 type="text"
-                                autoComplete="username"
+                                autoComplete="username email"
                                 required
-                                className={`appearance-none block w-full px-3 py-2 border ${errors.username ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm`}
-                                placeholder="johndoe"
-                                value={formData.username}
+                                className={`appearance-none block w-full px-3 py-2 border ${errors.usernameOrEmail ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm`}
+                                placeholder="johndoe or john@example.com"
+                                value={formData.usernameOrEmail}
                                 onChange={handleChange}
                             />
-                            {errors.username && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.username}</p>}
+                            {errors.usernameOrEmail && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.usernameOrEmail}</p>}
                         </div>
                         
                         <div className="mb-4">

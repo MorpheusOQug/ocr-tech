@@ -6,10 +6,13 @@ const path = require("path");
 const connectDB = require('./config/db');
 const { protect } = require('./middleware/auth');
 const { handleExport } = require('./export-handler');
+const logger = require('./utils/logger');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Import routes
 const authRoutes = require('./routes/auth');
+const documentRoutes = require('./routes/documentRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -25,6 +28,15 @@ app.use(express.json());
 
 // Register routes
 app.use('/api/auth', authRoutes);
+app.use('/api', documentRoutes);
+
+// Đảm bảo thư mục uploads tồn tại
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  logger.info('Created uploads directory');
+}
 
 let modelLoadingProgress = 0;
 let modelLoaded = false;
@@ -32,7 +44,7 @@ let pythonOcrProcess = null;
 
 // Khởi động Python OCR server
 function startPythonOcrServer() {
-  console.log("🔄 Starting Python OCR service...");
+  logger.info("🔄 Starting Python OCR service...");
   
   pythonOcrProcess = spawn("python", ["server.py"], {
     // Đặt biến môi trường UTF-8 cho Python
@@ -52,21 +64,21 @@ function startPythonOcrServer() {
     if(data.toString().includes("✅ Model loaded successfully!")) {
       modelLoaded = true;
       modelLoadingProgress = 100;
-      console.log("✅ OCR model loaded successfully!");
+      logger.info("✅ OCR model loaded successfully!");
     } else if(data.toString().includes("🔄 Loading OCR model")) {
       modelLoadingProgress = 30;
     }
   });
   
   pythonOcrProcess.stderr.on("data", (data) => {
-    console.error(`Python OCR Error: ${data}`);
+    logger.error(`Python OCR Error: ${data}`);
   });
   
   pythonOcrProcess.on("close", (code) => {
-    console.log(`Python OCR process exited with code ${code}`);
+    logger.info(`Python OCR process exited with code ${code}`);
     // Tự động khởi động lại nếu quá trình kết thúc
     if (code !== 0) {
-      console.log("🔄 Restarting Python OCR service...");
+      logger.info("🔄 Restarting Python OCR service...");
       setTimeout(startPythonOcrServer, 5000);
     }
   });
@@ -108,7 +120,7 @@ app.post("/api/ocr", upload.single("image"), async (req, res) => {
         // Trả kết quả về cho client
         res.json(response.data);
     } catch (error) {
-        console.error('Error during OCR process:', error);
+        logger.error('Error during OCR process:', error);
         res.status(500).json({ 
             error: "Error processing image",
             message: error.message,
@@ -147,7 +159,7 @@ app.post("/upload", upload.single("image"), (req, res) => {
     });
 
     pythonProcess.stderr.on("data", (data) => {
-        console.error(`Error from Python: ${data}`);
+        logger.error(`Error from Python: ${data}`);
     });
 
     pythonProcess.on("close", () => {
@@ -181,7 +193,7 @@ app.post("/export", async (req, res) => {
         
         const safeFileName = (fileName || 'ocr-result').replace(/[^a-zA-Z0-9-_]/g, '_');
         
-        console.log(`📄 Exporting content as ${format} file: ${safeFileName}.${format}`);
+        logger.info(`📄 Exporting content as ${format} file: ${safeFileName}.${format}`);
         
         const { buffer, mimetype } = await handleExport(content, format, safeFileName);
         
@@ -194,7 +206,7 @@ app.post("/export", async (req, res) => {
         res.send(buffer);
         
     } catch (error) {
-        console.error('Error during export:', error);
+        logger.error('Error during export:', error);
         res.status(500).json({ 
             error: "Error exporting document",
             message: error.message
@@ -202,16 +214,40 @@ app.post("/export", async (req, res) => {
     }
 });
 
-// Xử lý khi server Node.js tắt
-process.on('SIGINT', () => {
-    console.log('Shutting down...');
+// Xử lý lỗi khi MongoDB mất kết nối
+mongoose.connection.on('error', (err) => {
+  logger.error(`MongoDB connection error: ${err}`);
+});
+
+mongoose.connection.on('disconnected', () => {
+  logger.error('MongoDB disconnected, attempting to reconnect...');
+  mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+});
+
+// Xử lý khi ứng dụng đóng
+process.on('SIGINT', async () => {
+  try {
+    // Đóng kết nối MongoDB
+    await mongoose.connection.close();
+    logger.info('MongoDB connection closed.');
+    
+    // Kết thúc Python OCR process nếu đang chạy
     if (pythonOcrProcess) {
-        pythonOcrProcess.kill();
+      pythonOcrProcess.kill();
+      logger.info('Python OCR process terminated.');
     }
+    
+    logger.info('Server shutting down gracefully.');
     process.exit(0);
+  } catch (err) {
+    logger.error(`Error during graceful shutdown: ${err}`);
+    process.exit(1);
+  }
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server running at: http://localhost:${PORT}`);
-    console.log('MongoDB connection established');
+    logger.info(`🚀 Server running on port ${PORT}`);
 });
