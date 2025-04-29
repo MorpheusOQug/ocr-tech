@@ -85,7 +85,7 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
             const token = localStorage.getItem('token');
             
             // Call the API to delete the document
-            await axios.delete(`http://localhost:5001/api/documents/${fileToDelete.id}`, {
+            await axios.delete(`http://localhost:5000/api/documents/${fileToDelete.id}`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

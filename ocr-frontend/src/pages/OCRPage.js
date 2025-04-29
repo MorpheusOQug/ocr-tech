@@ -61,7 +61,7 @@ function OCRPage() {
     useEffect(() => {
         const checkServerStatus = async () => {
             try {
-                await axios.get("http://localhost:5001/health");
+                await axios.get("http://localhost:5000/health");
                 setServerStatus("online");
             } catch (error) {
                 setServerStatus("offline");
@@ -167,8 +167,8 @@ function OCRPage() {
 
             // Determine which endpoint to use based on authentication
             const endpoint = token 
-                ? "http://localhost:5001/api/ocr"  // Authenticated endpoint
-                : "http://localhost:5001/api/public/ocr"; // Public endpoint
+                ? "http://localhost:5000/api/ocr"  // Authenticated endpoint
+                : "http://localhost:5000/api/public/ocr"; // Public endpoint
 
             const response = await axios.post(
                 endpoint,
@@ -303,7 +303,7 @@ function OCRPage() {
         } 
         else if (format === 'docx' || format === 'pdf') {
             axios({
-                url: `http://localhost:5001/export`,
+                url: `http://localhost:5000/export`,
                 method: 'POST',
                 data: { 
                     content: content,
