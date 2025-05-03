@@ -2,6 +2,8 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import OCRPage from "./pages/OCRPage";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 import Navbar from "./components/Navbar";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -16,14 +18,7 @@ const routerFutureConfig = {
   v7_relativeSplatPath: true
 };
 
-// Placeholder components for Blog and Solutions pages
-const Blog = () => (
-    <div className="container pt-8">
-        <h1 className="text-3xl font-bold mb-4">Blog</h1>
-        <p className="text-gray-700 dark:text-gray-300">Blog content coming soon...</p>
-    </div>
-);
-
+// Placeholder component for Solutions page
 const Solutions = () => (
     <div className="container pt-8">
         <h1 className="text-3xl font-bold mb-4">Solutions</h1>
@@ -81,6 +76,7 @@ function App() {
                                     } 
                                 />
                                 <Route path="/blog" element={<Blog />} />
+                                <Route path="/blog/:id" element={<BlogPost />} />
                                 <Route path="/solutions" element={<Solutions />} />
                                 <Route path="*" element={<NotFound />} />
                             </Routes>
