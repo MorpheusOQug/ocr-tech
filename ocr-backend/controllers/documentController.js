@@ -124,7 +124,10 @@ const documentController = {
         query.$or = [
           { originalName: { $regex: search, $options: 'i' } },
           { type: { $regex: search, $options: 'i' } },
-          { mode: { $regex: search, $options: 'i' } }
+          { mode: { $regex: search, $options: 'i' } },
+          // Tìm kiếm trong OCR text - cần kiểm tra cả hai loại cấu trúc kết quả OCR
+          { 'ocrResult.text': { $regex: search, $options: 'i' } },
+          { 'ocrResult.markdown': { $regex: search, $options: 'i' } }
         ];
       }
 
@@ -169,6 +172,54 @@ const documentController = {
       return res.status(200).json(document);
     } catch (error) {
       logger.error(`Error getting document details: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    }
+  },
+
+  /**
+   * Cập nhật thông tin của một tài liệu
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  async updateDocument(req, res) {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Document name is required' });
+    }
+
+    try {
+      const document = await Document.findOne({ _id: id, userId });
+
+      if (!document) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+
+      // Update document name
+      document.originalName = name;
+      
+      // Also update file on Google Drive if possible
+      if (document.driveId) {
+        try {
+          await driveService.updateFile(document.driveId, { name });
+          logger.info(`Updated file name on Google Drive: ${document.driveId}`);
+        } catch (driveError) {
+          logger.error(`Failed to update file name on Drive: ${driveError.message}`);
+          // Continue even if Drive update fails
+        }
+      }
+
+      await document.save();
+      logger.info(`Document updated successfully: ${id}`);
+
+      return res.status(200).json({ 
+        message: 'Document updated successfully',
+        document
+      });
+    } catch (error) {
+      logger.error(`Error updating document: ${error.message}`);
       return res.status(500).json({ error: error.message });
     }
   },

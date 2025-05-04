@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { ThemeContext } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { useValidation } from "../context/ValidationContext";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +10,6 @@ import FileUpload from "../components/FileUpload";
 import ExportModal from "../components/ExportModal";
 
 function OCRPage() {
-    const { darkMode, toggleDarkMode } = useContext(ThemeContext);
     const { user, logout } = useAuth();
     const { validateFile } = useValidation();
     const [image, setImage] = useState(null);
@@ -554,7 +552,7 @@ function OCRPage() {
                                     {serverStatus}
                                 </span>
                             </div>
-                            <button
+                            {/* <button
                                 onClick={toggleDarkMode}
                                 className={`p-2 rounded-lg transition-colors duration-300 ${
                                     darkMode 
@@ -572,8 +570,8 @@ function OCRPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                                     </svg>
                                 )}
-                            </button>
-                            <div className="flex items-center ml-3">
+                            </button> */}
+                            {/* <div className="flex items-center ml-3">
                                 <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
                                     {user?.name?.charAt(0) || 'U'}
                                 </div>
@@ -584,7 +582,7 @@ function OCRPage() {
                                         </p>
                                     </div>
                                 )}
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                 </header>

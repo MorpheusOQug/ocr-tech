@@ -10,7 +10,7 @@ function Settings() {
                     <h3 className="text-lg font-medium text-gray-800 dark:text-white mb-4">OCR Settings</h3>
                     
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        {/* <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Default Recognition Mode</p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Choose the default mode for OCR processing</p>
@@ -20,7 +20,7 @@ function Settings() {
                                 <option value="table">Table Extraction</option>
                                 <option value="form">Form Data</option>
                             </select>
-                        </div>
+                        </div> */}
                         
                         <div className="flex items-center justify-between">
                             <div>
@@ -29,14 +29,11 @@ function Settings() {
                             </div>
                             <select className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-1.5 pl-3 pr-8 text-sm">
                                 <option value="en">English</option>
-                                <option value="fr">French</option>
-                                <option value="es">Spanish</option>
-                                <option value="de">German</option>
-                                <option value="pt">Portuguese</option>
+                                <option value="fr">Vietnamese</option>
                             </select>
                         </div>
                         
-                        <div className="flex items-center justify-between">
+                        {/* <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Confidence Threshold</p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Minimum confidence score for OCR results (higher is more accurate)</p>
@@ -47,7 +44,7 @@ function Settings() {
                                 <option value="0.8">80%</option>
                                 <option value="0.9">90%</option>
                             </select>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
                 

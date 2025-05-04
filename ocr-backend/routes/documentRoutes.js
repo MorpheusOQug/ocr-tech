@@ -49,6 +49,9 @@ router.get('/documents', authMiddleware, documentController.getUserDocuments);
 // Route lấy chi tiết tài liệu
 router.get('/documents/:id', authMiddleware, documentController.getDocumentById);
 
+// Route cập nhật thông tin tài liệu
+router.put('/documents/:id', authMiddleware, documentController.updateDocument);
+
 // Route xóa tài liệu
 router.delete('/documents/:id', authMiddleware, documentController.deleteDocument);
 

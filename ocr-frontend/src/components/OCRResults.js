@@ -23,7 +23,7 @@ function OCRResults({
 }) {
     return (
         <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
-            <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+            {/* <div className="border-b border-gray-200 dark:border-gray-700 p-4">
                 <div className="flex gap-4">
                     <button
                         onClick={() => setActiveMode('text')}
@@ -56,7 +56,7 @@ function OCRResults({
                         Form Data
                     </button>
                 </div>
-            </div>
+            </div> */}
             
             {/* Results area */}
             <div 

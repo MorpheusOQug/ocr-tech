@@ -257,9 +257,57 @@ class GoogleDriveService {
   }
 
   /**
-   * Xóa file trên Drive
-   * @param {string} fileId - ID của file cần xóa
-   * @returns {Promise<boolean>} - true nếu xóa thành công
+   * Cập nhật thông tin file trên Google Drive
+   * @param {string} fileId - ID của file trên Drive
+   * @param {Object} metadata - Metadata cần cập nhật (name, description, etc.)
+   * @returns {Promise<Object>} - Thông tin file đã cập nhật
+   */
+  async updateFile(fileId, metadata) {
+    if (!this.initialized) {
+      throw new Error('Google Drive service not initialized');
+    }
+
+    try {
+      // Kiểm tra fileId
+      if (!fileId) {
+        throw new Error('File ID is required');
+      }
+
+      // Tạo đối tượng metadata để cập nhật
+      const fileMetadata = {};
+      
+      // Chỉ cập nhật những trường đã cung cấp
+      if (metadata.name) fileMetadata.name = metadata.name;
+      if (metadata.description) fileMetadata.description = metadata.description;
+      if (metadata.mimeType) fileMetadata.mimeType = metadata.mimeType;
+      
+      // Không cho phép thay đổi parent folders qua API này
+      
+      logger.info(`Updating file ${fileId} with new metadata: ${JSON.stringify(fileMetadata)}`);
+      
+      // Thực hiện cập nhật
+      const response = await this.drive.files.update({
+        fileId,
+        resource: fileMetadata,
+        fields: 'id, name, webViewLink',
+      });
+
+      logger.info(`Updated file ${fileId} successfully`);
+      return {
+        id: response.data.id,
+        name: response.data.name,
+        webViewLink: response.data.webViewLink,
+      };
+    } catch (error) {
+      logger.error(`Error updating file ${fileId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Xóa file trên Google Drive
+   * @param {string} fileId - ID của file trên Drive
+   * @returns {Promise<boolean>} - Kết quả xóa file
    */
   async deleteFile(fileId) {
     if (!this.initialized) {
