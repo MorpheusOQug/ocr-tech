@@ -120,7 +120,14 @@ function Register() {
 
             // Log the user in with the returned data
             login(userData);
-            navigate('/ocr'); // Redirect to OCR page on successful registration
+            
+            // Navigate to verification page instead of OCR page
+            navigate('/verify-code', { 
+                state: { 
+                    email: formData.email,
+                    justRegistered: true
+                } 
+            });
         } catch (error) {
             // Hiển thị lỗi trong giao diện thay vì console
             const errorMessage = error.response?.data?.message || 'An error occurred during registration';

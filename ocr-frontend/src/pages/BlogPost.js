@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 
@@ -10,7 +10,7 @@ const BlogPost = () => {
     const [loading, setLoading] = useState(true);
     
     // Sample blog data - in a real app, this would come from an API
-    const blogPosts = [
+    const blogPosts = useMemo(() => [
         {
             id: 1,
             title: "OCR Technology: The Revolution in Document Digitization",
@@ -172,7 +172,7 @@ const BlogPost = () => {
                 <p>By implementing these scanning best practices, organizations can significantly improve the quality of their digitized documents, enhance OCR accuracy, and ensure their digital archives are accessible, searchable, and preservable for the long term.</p>
             `
         }
-    ];
+    ], []);
     
     useEffect(() => {
         // Simulate API call to fetch blog post data
@@ -188,7 +188,7 @@ const BlogPost = () => {
             // Redirect to 404 if post not found
             navigate('/not-found', { replace: true });
         }
-    }, [id, navigate]);
+    }, [id, navigate, blogPosts]);
     
     if (loading) {
         return (

@@ -18,6 +18,7 @@ const setAuthToken = (token) => {
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isVerified, setIsVerified] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [token, setToken] = useState(localStorage.getItem('token'));
 
@@ -30,6 +31,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
         const storedToken = localStorage.getItem('token');
+        const storedVerified = localStorage.getItem('isVerified');
         
         if (storedUser && storedToken) {
             try {
@@ -37,12 +39,14 @@ export const AuthProvider = ({ children }) => {
                 setUser(userData);
                 setToken(storedToken);
                 setIsAuthenticated(true);
+                setIsVerified(storedVerified === 'true');
                 setAuthToken(storedToken);
             } catch (error) {
                 console.error('Error parsing stored user data:', error);
                 // If there's an error parsing the stored data, clear it
                 localStorage.removeItem('user');
                 localStorage.removeItem('token');
+                localStorage.removeItem('isVerified');
                 setAuthToken(null);
             }
         }
@@ -54,20 +58,31 @@ export const AuthProvider = ({ children }) => {
         if (userData && userData.token) {
             localStorage.setItem('token', userData.token);
             localStorage.setItem('user', JSON.stringify(userData));
+            // Set isVerified from userData
+            localStorage.setItem('isVerified', userData.isVerified ? 'true' : 'false');
             setToken(userData.token);
             setUser(userData);
             setIsAuthenticated(true);
+            setIsVerified(userData.isVerified || false);
             setAuthToken(userData.token);
         }
+    };
+
+    // Set verification status
+    const verifyUser = () => {
+        localStorage.setItem('isVerified', 'true');
+        setIsVerified(true);
     };
 
     // Enhanced logout function
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('isVerified');
         setUser(null);
         setToken(null);
         setIsAuthenticated(false);
+        setIsVerified(false);
         setAuthToken(null);
     };
 
@@ -91,10 +106,12 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider value={{ 
             user, 
             token,
-            isAuthenticated, 
+            isAuthenticated,
+            isVerified,
             isLoading,
             login, 
             logout,
+            verifyUser,
             checkTokenValidity
         }}>
             {children}

@@ -4,8 +4,12 @@
 
 /* Custom styles that extend Tailwind */
 @layer base {
+  html {
+    @apply overflow-x-hidden;
+  }
+  
   body {
-    @apply font-sans text-gray-800 bg-gray-50 transition-colors duration-300;
+    @apply font-sans text-gray-800 bg-gray-50 transition-colors duration-300 overflow-x-hidden overflow-y-auto;
   }
 
   body.dark-mode {
@@ -38,6 +42,23 @@
 
   button {
     @apply transition-colors duration-300;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-700 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-gray-600;
   }
 }
 
@@ -78,5 +99,15 @@
 
   .dark-transition {
     @apply transition-colors duration-300;
+  }
+  
+  /* Hide scrollbar for specific elements */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
   }
 }

@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ValidationProvider } from "./context/ValidationContext";
 import Login from "./components/Login";
 import Register from "./components/Register";
+import VerifyCode from "./components/VerifyCode";
 import NotFound from "./pages/NotFound";
 
 // Future flags for React Router v7
@@ -41,15 +42,21 @@ const LoadingScreen = () => (
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated, isLoading } = useAuth();
+    const { isAuthenticated, isVerified, isLoading } = useAuth();
     
     // Show loading screen while checking authentication
     if (isLoading) {
         return <LoadingScreen />;
     }
     
+    // Redirect to login if not authenticated
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
+    }
+    
+    // Redirect to verification page if authenticated but not verified
+    if (!isVerified) {
+        return <Navigate to="/verify-code" replace state={{ justRegistered: true }} />;
     }
     
     return children;
@@ -61,12 +68,14 @@ function App() {
             <ThemeProvider>
                 <ValidationProvider>
                     <Router future={routerFutureConfig}>
+                        <div className="flex flex-col min-h-screen overflow-x-hidden">
                         <Navbar />
-                        <div className="pt-16 min-h-screen bg-gray-50 dark:bg-darkBg">
+                            <main className="flex-grow bg-gray-50 dark:bg-darkBg pt-16 mx-auto w-full max-w-full">
                             <Routes>
                                 <Route path="/" element={<Home />} />
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/register" element={<Register />} />
+                                    <Route path="/verify-code" element={<VerifyCode />} />
                                 <Route 
                                     path="/ocr" 
                                     element={
@@ -80,6 +89,7 @@ function App() {
                                 <Route path="/solutions" element={<Solutions />} />
                                 <Route path="*" element={<NotFound />} />
                             </Routes>
+                            </main>
                         </div>
                     </Router>
                 </ValidationProvider>

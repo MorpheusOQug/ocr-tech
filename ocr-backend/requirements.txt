@@ -13,3 +13,6 @@ accelerate>=0.26.0
 python-docx
 pdfkit
 PyPDF2 
+
+matplotlib==3.7.1
+numpy==1.24.3 

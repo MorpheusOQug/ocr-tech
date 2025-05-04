@@ -15,12 +15,16 @@ import json
 import subprocess
 from typing import Dict, Any, Optional
 
-# Suppress timm deprecation warnings
-warnings.filterwarnings("ignore", category=FutureWarning, module="timm.models.layers")
+# Suppress all warnings more aggressively
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", message="Sliding Window Attention is enabled but not implemented for `eager`")
 
 # Disable Sliding Window Attention since it's not implemented for eager mode
 os.environ["USE_TORCH_COMPILE"] = "False"
 os.environ["TORCH_CUDNN_V8_API_ENABLED"] = "0"
+os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Add root directory to sys.path to import modules from parent directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -49,6 +53,10 @@ print("✅ Model loaded successfully!")
 
 # Image preprocessing function
 def build_transform(input_size):
+    """Build image transformation pipeline.
+    
+    The model expects input size to be 448x448.
+    """
     transform = T.Compose([
         T.Lambda(lambda img: img.convert('RGB') if img.mode != 'RGB' else img),
         T.Resize((input_size, input_size), interpolation=InterpolationMode.BICUBIC),
@@ -58,50 +66,95 @@ def build_transform(input_size):
     return transform
 
 # Image processing function
-def process_image(image_data, input_size=448):
-    image = Image.open(io.BytesIO(image_data)).convert("RGB")
-    transform = build_transform(input_size=input_size)
-    pixel_values = transform(image).unsqueeze(0)
-    
-    # Convert to appropriate dtype based on device
-    if device == "cuda":
-        pixel_values = pixel_values.to(torch.bfloat16).to(device)
-    else:
-        pixel_values = pixel_values.to(torch.float32).to(device)
+def process_image(image_data, input_size=448):  # Use model's default size of 448
+    try:
+        image = Image.open(io.BytesIO(image_data)).convert("RGB")
         
-    return pixel_values
+        # Print image info for debugging
+        print(f"Original image size: {image.size}")
+        
+        # Ensure image dimensions are multiples of 14 (model requirement)
+        width, height = image.size
+        target_width = input_size
+        target_height = input_size
+        
+        transform = build_transform(input_size=input_size)
+        pixel_values = transform(image).unsqueeze(0)
+        
+        # Print tensor info
+        print(f"Processed tensor shape: {pixel_values.shape}")
+    
+        # Convert to appropriate dtype based on device
+        if device == "cuda":
+            pixel_values = pixel_values.to(torch.bfloat16).to(device)
+        else:
+            pixel_values = pixel_values.to(torch.float32).to(device)
+        
+        return pixel_values
+    except Exception as e:
+        print(f"Error in process_image: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 # API to receive image and perform OCR
 @app.post("/ocr")
 async def ocr(
     file: UploadFile = File(...),
-    question: str = Form("<image>\nExtract information from the image in markdown format")
+    question: str = Form("<image>\nPlease extract the full and accurate text of the official Vietnamese government document shown in the image, including the title, issuing agency, document number, date, legal references, main content, clauses, and the name of the signatory (if any). Preserve the structure and formatting (e.g., bullet points, line breaks, numbered articles) as much as possible.")
 ):
-    image_data = await file.read()
-    pixel_values = process_image(image_data)
-
-    # Model configuration
-    generation_config = dict(max_new_tokens=512, do_sample=False, num_beams=3, repetition_penalty=3.5)
-    
-    # Use question from client or default question
-    if not question.strip():
-        question = "<image>\nExtract information from the image in markdown format"
-    
-    # Ensure question has <image> prefix
-    if not question.startswith("<image>"):
-        question = "<image>\n" + question
-    
-    # Run model for recognition and return result
     try:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=UserWarning)
-            warnings.filterwarnings("ignore", category=FutureWarning)
-            response = model.chat(tokenizer, pixel_values, question, generation_config)
-    except Exception as e:
-        print(f"Error during model inference: {e}")
-        return {"error": str(e), "text": "Failed to process image"}
+        print(f"Processing OCR request with prompt length: {len(question)} chars")
+        image_data = await file.read()
+        print(f"Image received, size: {len(image_data)} bytes")
+        
+        # Process image
+        try:
+            pixel_values = process_image(image_data)
+            print("Image processed successfully")
+        except Exception as e:
+            print(f"Error processing image: {e}")
+            return {"error": f"Image processing failed: {str(e)}", "text": "Failed to process image"}
 
-    return {"text": response}
+        # Model configuration
+        generation_config = dict(
+            max_new_tokens=1024,  # Increased from 512 to handle longer documents
+            do_sample=False,      # Deterministic generation
+            num_beams=4,          # Increased from 3 for better search
+            repetition_penalty=3.5,
+            length_penalty=1.0,   # Encourage slightly longer outputs
+            early_stopping=True   # Stop when all beams reach EOS
+        )
+    
+        # Use question from client or default question
+        if not question.strip():
+            question = "<image>\nPlease extract the full and accurate text of the official Vietnamese government document shown in the image, including the title, issuing agency, document number, date, legal references, main content, clauses, and the name of the signatory (if any). Preserve the structure and formatting (e.g., bullet points, line breaks, numbered articles) as much as possible."
+    
+        # Ensure question has <image> prefix
+        if not question.startswith("<image>"):
+            question = "<image>\n" + question
+    
+        print("Starting model inference...")
+        # Run model for recognition and return result
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning)
+                warnings.filterwarnings("ignore", category=FutureWarning)
+                response = model.chat(tokenizer, pixel_values, question, generation_config)
+                print(f"Model inference successful, response length: {len(response)} chars")
+        except Exception as e:
+            print(f"Error during model inference: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"error": str(e), "text": "Failed to process image", "details": traceback.format_exc()}
+
+        return {"text": response, "status": "success"}
+        
+    except Exception as e:
+        print(f"Unhandled exception in OCR endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "text": "Failed to process request", "details": traceback.format_exc()}
 
 # API to check server status
 @app.get("/health")
