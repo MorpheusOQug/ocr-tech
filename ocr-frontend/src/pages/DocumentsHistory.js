@@ -448,7 +448,7 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
                                     (pageNumber === currentPage - 2 && currentPage > 3) ||
                                     (pageNumber === currentPage + 2 && currentPage < totalPages - 2)
                                 ) {
-                                    // Hiển thị dấu "..." nếu có nhiều trang
+                                    // Nhiều trang thì "..."
                                     return (
                                         <span 
                                             key={pageNumber}

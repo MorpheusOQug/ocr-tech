@@ -13,6 +13,7 @@ require('dotenv').config();
 // Import routes
 const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documentRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -29,6 +30,7 @@ app.use(express.json());
 // Register routes
 app.use('/api/auth', authRoutes);
 app.use('/api', documentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Đảm bảo thư mục uploads tồn tại
 const fs = require('fs');

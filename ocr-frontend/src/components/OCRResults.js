@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import ReactMarkdown from 'react-markdown';
 
 function OCRResults({ 
@@ -21,6 +21,17 @@ function OCRResults({
     handleEditSave,
     handleEditCancel
 }) {
+    const [showOverlay, setShowOverlay] = useState(false);
+    const [selectedForm, setSelectedForm] = useState(null);
+    
+    const handleOverlayToggle = () => {
+        setShowOverlay(!showOverlay);
+    };
+    
+    const handleFormSelect = (formType) => {
+        setSelectedForm(formType);
+    };
+    
     return (
         <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
             {/* <div className="border-b border-gray-200 dark:border-gray-700 p-4">
@@ -230,6 +241,16 @@ function OCRResults({
                                             Edit
                                         </button>
                                         
+                                        <button 
+                                            onClick={handleOverlayToggle}
+                                            className="flex items-center px-3 py-1.5 text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 rounded hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                                            </svg>
+                                            Form Overlay
+                                        </button>
+                                        
                                         {/* Hiển thị link Google Drive nếu có */}
                                         {ocrResult.driveUrl && (
                                             <a 
@@ -258,6 +279,113 @@ function OCRResults({
                     </div>
                 )}
             </div>
+            
+            {/* Form Overlay */}
+            {showOverlay && ocrResult && (
+                <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
+                        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between">
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Document Form Analysis</h3>
+                            <button 
+                                onClick={handleOverlayToggle}
+                                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div className="flex flex-col md:flex-row h-[calc(90vh-8rem)] overflow-hidden">
+                            {/* Left side: OCR content */}
+                            <div className="md:w-1/2 p-6 overflow-y-auto border-r border-gray-200 dark:border-gray-700">
+                                <h4 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-4">OCR Result:</h4>
+                                <div className="prose dark:prose-invert max-w-none">
+                                    <ReactMarkdown>
+                                        {ocrResult.markdown || ocrResult.text}
+                                    </ReactMarkdown>
+                                </div>
+                            </div>
+                            
+                            {/* Right side: Form selection */}
+                            <div className="md:w-1/2 p-6 overflow-y-auto">
+                                <h4 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-4">Select Document Type</h4>
+                                
+                                <div className="grid grid-cols-1 gap-4">
+                                    <button 
+                                        onClick={() => handleFormSelect('id_card')}
+                                        className={`flex items-center p-4 border rounded-lg transition-all ${
+                                            selectedForm === 'id_card' 
+                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                                                : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                        }`}
+                                    >
+                                        <div className="bg-blue-100 dark:bg-blue-800 p-3 rounded-lg mr-4">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                            </svg>
+                                        </div>
+                                        <div className="text-left">
+                                            <h5 className="font-medium text-gray-800 dark:text-gray-200">Căn Cước Công Dân</h5>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">Extract ID card information</p>
+                                        </div>
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={() => handleFormSelect('resolution')}
+                                        className={`flex items-center p-4 border rounded-lg transition-all ${
+                                            selectedForm === 'resolution' 
+                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                                                : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                        }`}
+                                    >
+                                        <div className="bg-green-100 dark:bg-green-800 p-3 rounded-lg mr-4">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <div className="text-left">
+                                            <h5 className="font-medium text-gray-800 dark:text-gray-200">Nghị Quyết</h5>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">Extract resolution document data</p>
+                                        </div>
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={() => handleFormSelect('decision')}
+                                        className={`flex items-center p-4 border rounded-lg transition-all ${
+                                            selectedForm === 'decision' 
+                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                                                : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                        }`}
+                                    >
+                                        <div className="bg-purple-100 dark:bg-purple-800 p-3 rounded-lg mr-4">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600 dark:text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                            </svg>
+                                        </div>
+                                        <div className="text-left">
+                                            <h5 className="font-medium text-gray-800 dark:text-gray-200">Quyết Định</h5>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">Extract decision document data</p>
+                                        </div>
+                                    </button>
+                                </div>
+                                
+                                {selectedForm && (
+                                    <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                        <h5 className="font-medium text-gray-800 dark:text-gray-200 mb-2">
+                                            Selected: {selectedForm === 'id_card' ? 'Căn Cước Công Dân' : 
+                                                selectedForm === 'resolution' ? 'Nghị Quyết' : 'Quyết Định'}
+                                        </h5>
+                                        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                            Submit
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

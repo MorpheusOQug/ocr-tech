@@ -60,6 +60,10 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('user', JSON.stringify(userData));
             // Set isVerified from userData
             localStorage.setItem('isVerified', userData.isVerified ? 'true' : 'false');
+            // Store user email for access control
+            if (userData.email) {
+                localStorage.setItem('userEmail', userData.email);
+            }
             setToken(userData.token);
             setUser(userData);
             setIsAuthenticated(true);
@@ -79,6 +83,8 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('isVerified');
+        localStorage.removeItem('isAdmin');
+        localStorage.removeItem('userEmail');
         setUser(null);
         setToken(null);
         setIsAuthenticated(false);

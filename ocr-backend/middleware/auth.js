@@ -13,6 +13,17 @@ const protect = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+      // Handle hardcoded admin case
+      if (decoded.id === 'admin-hardcoded-id') {
+        req.user = {
+          _id: 'admin-hardcoded-id',
+          username: 'admin',
+          email: 'admin@admin.com',
+          isAdmin: true
+        };
+        return next();
+      }
+
       // Get user from the token (exclude password)
       req.user = await User.findById(decoded.id).select('-password');
 
@@ -28,4 +39,13 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect }; 
+// Admin middleware
+const admin = (req, res, next) => {
+  if (req.user && req.user.isAdmin) {
+    next();
+  } else {
+    res.status(401).json({ message: 'Not authorized as an admin' });
+  }
+};
+
+module.exports = { protect, admin }; 
