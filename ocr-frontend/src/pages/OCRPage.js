@@ -8,6 +8,7 @@ import Settings from "./Settings";
 import OCRResults from "../components/OCRResults";
 import FileUpload from "../components/FileUpload";
 import ExportModal from "../components/ExportModal";
+import IdCardsPage from "./IdCardsPage";
 
 function OCRPage() {
     const { user, logout } = useAuth();
@@ -408,6 +409,8 @@ function OCRPage() {
                 );
             case 'files':
                 return <DocumentsHistory uploadedFiles={uploadedFiles} setActivePage={setActivePage} handleViewDocument={handleViewDocument} />;
+            case 'idcards':
+                return <IdCardsPage />;
             case 'settings':
                 return <Settings />;
             default:
@@ -479,6 +482,21 @@ function OCRPage() {
                         </li>
                         <li>
                             <button
+                                onClick={() => setActivePage('idcards')}
+                                className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors duration-200 ${
+                                    activePage === 'idcards'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                </svg>
+                                {isSidebarOpen && <span>ID Cards</span>}
+                            </button>
+                        </li>
+                        <li>
+                            <button
                                 onClick={() => setActivePage('settings')}
                                 className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors duration-200 ${
                                     activePage === 'settings'
@@ -526,6 +544,13 @@ function OCRPage() {
                                     </svg>
                                     Document History
                                 </>
+                            ) : activePage === 'idcards' ? (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                    </svg>
+                                    ID Cards
+                                </>
                             ) : (
                                 <>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -552,37 +577,6 @@ function OCRPage() {
                                     {serverStatus}
                                 </span>
                             </div>
-                            {/* <button
-                                onClick={toggleDarkMode}
-                                className={`p-2 rounded-lg transition-colors duration-300 ${
-                                    darkMode 
-                                        ? 'bg-gray-700 text-yellow-400' 
-                                        : 'bg-gray-100 text-gray-600'
-                                }`}
-                                aria-label="Toggle dark mode"
-                            >
-                                {darkMode ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 7h16" />
-                                    </svg>
-                                ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                                    </svg>
-                                )}
-                            </button> */}
-                            {/* <div className="flex items-center ml-3">
-                                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
-                                    {user?.name?.charAt(0) || 'U'}
-                                </div>
-                                {isSidebarOpen && (
-                                    <div className="ml-3">
-                                        <p className="text-sm font-medium text-gray-800 dark:text-white">
-                                            {user?.name || 'User'}
-                                        </p>
-                                    </div>
-                                )}
-                            </div> */}
                         </div>
                     </div>
                 </header>

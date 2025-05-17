@@ -14,6 +14,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const idcardRoutes = require('./routes/idcardRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -31,6 +32,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api', documentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api', idcardRoutes);
 
 // Đảm bảo thư mục uploads tồn tại
 const fs = require('fs');
@@ -38,6 +40,13 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   logger.info('Created uploads directory');
+}
+
+// Ensure the uploads/temp directory for ID card uploads exists
+const tempUploadsDir = path.join(__dirname, 'uploads/temp');
+if (!fs.existsSync(tempUploadsDir)) {
+  fs.mkdirSync(tempUploadsDir, { recursive: true });
+  logger.info('Created uploads/temp directory for ID card uploads');
 }
 
 let modelLoadingProgress = 0;
