@@ -1,25 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import { useValidation } from "../context/ValidationContext";
 import { useNavigate } from "react-router-dom";
 import DocumentsHistory from "./DocumentsHistory";
 import Settings from "./Settings";
-import OCRResults from "../components/OCRResults";
-import FileUpload from "../components/FileUpload";
-import ExportModal from "../components/ExportModal";
 import IdCardsPage from "./IdCardsPage";
+import ImageOCRPage from "./ImageOCRPage";
+import PdfOcrPage from "./PdfOcrPage";
 
 function OCRPage() {
-    const { user, logout } = useAuth();
-    const { validateFile } = useValidation();
-    const [image, setImage] = useState(null);
-    const [preview, setPreview] = useState(null);
-    const [ocrResult, setOcrResult] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const { logout } = useAuth();
     const [serverStatus, setServerStatus] = useState("checking");
     const [isSidebarOpen, setSidebarOpen] = useState(true);
-    const [activeMode, setActiveMode] = useState('text');
+    const [activePage, setActivePage] = useState(() => {
+        const savedPage = localStorage.getItem('activePage');
+        return savedPage || 'image-ocr';
+    });
     const [uploadedFiles, setUploadedFiles] = useState(() => {
         // Get user-specific uploads from localStorage
         const userId = JSON.parse(localStorage.getItem('user'))?.id || 'guest';
@@ -27,35 +23,7 @@ function OCRPage() {
         const savedFiles = localStorage.getItem(storageKey);
         return savedFiles ? JSON.parse(savedFiles) : [];
     });
-    const [ocrResults, setOcrResults] = useState(() => {
-        // Get user-specific OCR results from localStorage
-        const userId = JSON.parse(localStorage.getItem('user'))?.id || 'guest';
-        const storageKey = `ocrResults_${userId}`;
-        const savedResults = localStorage.getItem(storageKey);
-        return savedResults ? JSON.parse(savedResults) : {};
-    });
-    const [currentDocumentId, setCurrentDocumentId] = useState(() => {
-        const savedDocumentId = localStorage.getItem('currentDocumentId');
-        return savedDocumentId || null;
-    });
-    const [activePage, setActivePage] = useState(() => {
-        const savedPage = localStorage.getItem('activePage');
-        return savedPage || 'home';
-    });
-    const resultBoxRef = useRef(null);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [error, setError] = useState(null);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editableText, setEditableText] = useState("");
-    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const navigate = useNavigate();
-
-    useEffect(() => {
-        if (currentDocumentId && ocrResults[currentDocumentId]) {
-            setOcrResult(ocrResults[currentDocumentId]);
-        }
-    }, [currentDocumentId, ocrResults]);
 
     useEffect(() => {
         const checkServerStatus = async () => {
@@ -75,346 +43,27 @@ function OCRPage() {
         localStorage.setItem('activePage', activePage);
     }, [activePage]);
 
+    // Save uploadedFiles to localStorage when it changes
     useEffect(() => {
-        if (currentDocumentId) {
-            localStorage.setItem('currentDocumentId', currentDocumentId);
-        }
-    }, [currentDocumentId]);
-
-    useEffect(() => {
-        // Save OCR results in user-specific storage
-        const userId = JSON.parse(localStorage.getItem('user'))?.id || 'guest';
-        const storageKey = `ocrResults_${userId}`;
-        localStorage.setItem(storageKey, JSON.stringify(ocrResults));
-    }, [ocrResults]);
-
-    useEffect(() => {
-        if (resultBoxRef.current && ocrResult) {
-            resultBoxRef.current.scrollTop = resultBoxRef.current.scrollHeight;
-        }
-    }, [ocrResult]);
-
-    useEffect(() => {
-        let interval;
-        if (isProcessing && uploadProgress < 100) {
-            interval = setInterval(() => {
-                setUploadProgress(prev => {
-                    const newProgress = prev + 5;
-                    return newProgress <= 100 ? newProgress : 100;
-                });
-            }, 150);
-        }
-        return () => clearInterval(interval);
-    }, [isProcessing, uploadProgress]);
-
-    const handleFileChange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            handleSelectedFile(file);
-        }
-    };
-
-    const handleSelectedFile = (file) => {
-        setError(null);
-        
-        const validation = validateFile(file);
-        if (!validation.isValid) {
-            setError(validation.error);
-            return;
-        }
-        
-        setImage(file);
-        if (file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreview(reader.result);
-            };
-            reader.readAsDataURL(file);
-        } else {
-            setPreview(null);
-        }
-    };
-
-    const handleViewDocument = (documentId) => {
-        if (ocrResults[documentId]) {
-            setCurrentDocumentId(documentId);
-            setOcrResult(ocrResults[documentId]);
-            setActivePage('home');
-        }
-    };
-
-    const handleUpload = async () => {
-        if (!image) {
-            setError('Please select a file to upload');
-            return;
-        }
-
-        setUploadProgress(0);
-        setIsProcessing(true);
-        setLoading(true);
-        setOcrResult(null);
-        setError(null);
-
-        try {
-            const formData = new FormData();
-            formData.append("file", image);
-            formData.append("mode", activeMode);
-
-            // Lấy token xác thực từ localStorage
-            const token = localStorage.getItem('token');
-            const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
-
-            // Determine which endpoint to use based on authentication
-            const endpoint = token 
-                ? "http://localhost:5000/api/ocr"  // Authenticated endpoint
-                : "http://localhost:5000/api/public/ocr"; // Public endpoint
-
-            const response = await axios.post(
-                endpoint,
-                formData,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                        ...authHeader
-                    },
-                    onUploadProgress: (progressEvent) => {
-                        const percentCompleted = Math.round(
-                            (progressEvent.loaded * 100) / progressEvent.total
-                        );
-                        setUploadProgress(percentCompleted);
-                    }
-                }
-            );
-
-            const newDocumentId = response.data.documentId || Date.now().toString();
-            setCurrentDocumentId(newDocumentId);
-            
-            // Lưu kết quả OCR vào state
-            const resultData = {
-                ...response.data,
-                uploadTime: new Date().toISOString()
-            };
-            
-            setOcrResult(resultData);
-            setOcrResults(prev => ({
-                ...prev,
-                [newDocumentId]: resultData
-            }));
-            
-            // Tạo thông tin file mới với đường dẫn Google Drive (nếu có)
-            const newFile = {
-                id: newDocumentId,
-                name: image.name,
-                date: new Date().toISOString().split('T')[0],
-                type: image.type.startsWith('image/') ? 'image' : 'document',
-                mode: activeMode,
-                resultId: newDocumentId,
-                driveUrl: response.data.driveUrl || null
-            };
-            
-            const updatedFiles = [newFile, ...uploadedFiles];
-            setUploadedFiles(updatedFiles);
-            
-            // Save in user-specific storage
             const userId = JSON.parse(localStorage.getItem('user'))?.id || 'guest';
             const storageKey = `uploadedFiles_${userId}`;
-            localStorage.setItem(storageKey, JSON.stringify(updatedFiles));
-            
-        } catch (error) {
-            console.error("Error processing OCR:", error);
-            setError(error.response?.data?.error || "An error occurred while processing your file. Please try again.");
-            setOcrResult(null);
-        } finally {
-            setLoading(false);
-            setTimeout(() => {
-                setUploadProgress(100);
-                setTimeout(() => {
-                    setIsProcessing(false);
-                    // Tự động xóa ảnh và preview sau khi xử lý thành công
-                    if (!error) {
-                        setImage(null);
-                        setPreview(null);
-                    }
-                }, 500);
-            }, 500);
-        }
-    };
-
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            handleSelectedFile(file);
-        }
-    };
-
-    const handleCopyResult = () => {
-        if (!ocrResult) return;
-        
-        const textToCopy = ocrResult.text || ocrResult.markdown || "";
-        
-        navigator.clipboard.writeText(textToCopy)
-            .then(() => {
-                const originalText = document.querySelector('#copy-button').innerHTML;
-                document.querySelector('#copy-button').innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Copied!
-                `;
-                
-                setTimeout(() => {
-                    document.querySelector('#copy-button').innerHTML = originalText;
-                }, 2000);
-            })
-            .catch(err => {
-                console.error('Failed to copy text: ', err);
-                setError("Failed to copy text to clipboard.");
-            });
-    };
-
-    const handleExportResult = () => {
-        setIsExportModalOpen(true);
-    };
-
-    const handleExportFormat = (format) => {
-        if (!ocrResult) return;
-        
-        const content = ocrResult.text || ocrResult.markdown || "";
-        const fileName = image?.name?.split('.').slice(0, -1).join('.') || "ocr-result";
-        
-        if (format === 'txt') {
-            const blob = new Blob([content], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.download = `${fileName}.txt`;
-            a.href = url;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } 
-        else if (format === 'docx' || format === 'pdf') {
-            axios({
-                url: `http://localhost:5000/export`,
-                method: 'POST',
-                data: { 
-                    content: content,
-                    format: format,
-                    fileName: fileName
-                },
-                responseType: 'blob'
-            })
-            .then((response) => {
-                const url = window.URL.createObjectURL(new Blob([response.data]));
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${fileName}.${format}`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(err => {
-                console.error(`Failed to export as ${format}:`, err);
-                setError(`Failed to export as ${format}. The server may not support this format.`);
-            });
-        }
-    };
-
-    const handleEditStart = () => {
-        if (!ocrResult) return;
-        
-        setEditableText(ocrResult.text || ocrResult.markdown || "");
-        setIsEditing(true);
-    };
-
-    const handleEditSave = () => {
-        const updatedResult = { ...ocrResult };
-        if (ocrResult.text) {
-            updatedResult.text = editableText;
-        } else if (ocrResult.markdown) {
-            updatedResult.markdown = editableText;
-        }
-        
-        setOcrResult(updatedResult);
-        
-        if (currentDocumentId) {
-            setOcrResults(prev => ({
-                ...prev,
-                [currentDocumentId]: updatedResult
-            }));
-        }
-        
-        setIsEditing(false);
-    };
-
-    const handleEditCancel = () => {
-        setIsEditing(false);
-        setEditableText("");
-    };
-
-    const handleEditChange = (e) => {
-        setEditableText(e.target.value);
-    };
+        localStorage.setItem(storageKey, JSON.stringify(uploadedFiles));
+    }, [uploadedFiles]);
 
     const renderContent = () => {
         switch (activePage) {
-            case 'home':
-                return (
-                    <div className="flex flex-col lg:flex-row gap-6 h-full">
-                        <OCRResults 
-                            resultBoxRef={resultBoxRef}
-                            loading={loading}
-                            ocrResult={ocrResult}
-                            error={error}
-                            setError={setError}
-                            user={user}
-                            image={image}
-                            preview={preview}
-                            activeMode={activeMode}
-                            setActiveMode={setActiveMode}
-                            handleCopyResult={handleCopyResult}
-                            handleExportResult={handleExportResult}
-                            handleEditStart={handleEditStart}
-                            isEditing={isEditing}
-                            editableText={editableText}
-                            handleEditChange={handleEditChange}
-                            handleEditSave={handleEditSave}
-                            handleEditCancel={handleEditCancel}
-                        />
-
-                        <FileUpload 
-                            image={image}
-                            preview={preview}
-                            isProcessing={isProcessing}
-                            uploadProgress={uploadProgress}
-                            handleDragOver={handleDragOver}
-                            handleDrop={handleDrop}
-                            handleFileChange={handleFileChange}
-                            handleUpload={handleUpload}
-                            setImage={setImage}
-                            setPreview={setPreview}
-                            setError={setError}
-                            uploadedFiles={uploadedFiles}
-                            setActivePage={setActivePage}
-                        />
-                    </div>
-                );
+            case 'image-ocr':
+                return <ImageOCRPage setUploadedFiles={setUploadedFiles} setActivePage={setActivePage} />;
+            case 'pdf-ocr':
+                return <PdfOcrPage setUploadedFiles={setUploadedFiles} setActivePage={setActivePage} />;
             case 'files':
-                return <DocumentsHistory uploadedFiles={uploadedFiles} setActivePage={setActivePage} handleViewDocument={handleViewDocument} />;
+                return <DocumentsHistory uploadedFiles={uploadedFiles} setUploadedFiles={setUploadedFiles} setActivePage={setActivePage} />;
             case 'idcards':
                 return <IdCardsPage />;
             case 'settings':
                 return <Settings />;
             default:
-                return null;
+                return <ImageOCRPage setUploadedFiles={setUploadedFiles} setActivePage={setActivePage} />;
         }
     };
 
@@ -452,9 +101,24 @@ function OCRPage() {
                     <ul className="space-y-2">
                         <li>
                             <button
-                                onClick={() => setActivePage('home')}
+                                onClick={() => setActivePage('image-ocr')}
                                 className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors duration-200 ${
-                                    activePage === 'home'
+                                    activePage === 'image-ocr'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                {isSidebarOpen && <span>Image OCR</span>}
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                onClick={() => setActivePage('pdf-ocr')}
+                                className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors duration-200 ${
+                                    activePage === 'pdf-ocr'
                                         ? 'bg-blue-600 text-white'
                                         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                                 }`}
@@ -462,7 +126,7 @@ function OCRPage() {
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                {isSidebarOpen && <span>OCR Scanner</span>}
+                                {isSidebarOpen && <span>PDF OCR</span>}
                             </button>
                         </li>
                         <li>
@@ -530,12 +194,19 @@ function OCRPage() {
                 <header className="bg-white dark:bg-gray-800 shadow-md z-10">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
                         <h1 className="text-2xl font-semibold text-gray-800 dark:text-white flex items-center">
-                            {activePage === 'home' ? (
+                            {activePage === 'image-ocr' ? (
                                 <>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    Image OCR
+                                </>
+                            ) : activePage === 'pdf-ocr' ? (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
-                                    OCR Scanner
+                                    PDF OCR
                                 </>
                             ) : activePage === 'files' ? (
                                 <>
@@ -587,13 +258,6 @@ function OCRPage() {
                     </div>
                 </main>
             </div>
-
-            <ExportModal 
-                isOpen={isExportModalOpen}
-                onClose={() => setIsExportModalOpen(false)}
-                onExport={handleExportFormat}
-                fileName={image?.name?.split('.').slice(0, -1).join('.') || "ocr-result"}
-            />
         </div>
     );
 }

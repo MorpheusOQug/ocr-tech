@@ -14,7 +14,7 @@ const documentController = {
    */
   async processOCR(req, res) {
     const { file } = req;
-    const { mode } = req.body;
+    const { mode, fileType } = req.body;
     const userId = req.user.id;
     
     if (!file) {
@@ -29,11 +29,14 @@ const documentController = {
     }
     
     // Log file information for debugging
-    logger.info(`Processing file: ${file.originalname}, size: ${file.size}, path: ${file.path}`);
+    logger.info(`Processing file: ${file.originalname}, size: ${file.size}, path: ${file.path}, type: ${fileType || 'unknown'}`);
 
     try {
+      // Check if file is PDF and handle it specially
+      const isPdf = file.mimetype === 'application/pdf';
+      
       // Gọi service OCR hiện tại để xử lý
-      const ocrResultData = await performOCR(file.path, mode);
+      const ocrResultData = await performOCR(file.path, mode, isPdf);
       logger.info(`OCR processing completed successfully`);
 
       // Tạo hoặc lấy thư mục của người dùng trên Google Drive
@@ -83,7 +86,7 @@ const documentController = {
       const document = new Document({
         name: file.filename,
         originalName: file.originalname,
-        type: file.mimetype.startsWith('image/') ? 'image' : 'document',
+        type: file.mimetype.startsWith('image/') ? 'image' : (isPdf ? 'pdf' : 'document'),
         size: file.size,
         userId,
         ocrResult: ocrResultData,
@@ -271,9 +274,10 @@ const documentController = {
  * Hàm thực hiện OCR (gọi Python OCR service)
  * @param {string} filePath - Đường dẫn đến file cần OCR
  * @param {string} mode - Chế độ OCR
+ * @param {boolean} isPdf - Cờ đánh dấu file là PDF
  * @returns {Promise<Object>} - Kết quả OCR
  */
-async function performOCR(filePath, mode) {
+async function performOCR(filePath, mode, isPdf = false) {
   try {
     // Sử dụng axios để gửi request tới Python FastAPI server
     const axios = require('axios');
@@ -288,13 +292,35 @@ async function performOCR(filePath, mode) {
       formData.append('mode', mode);
     }
     
+    // Tell server if file is PDF for special processing
+    if (isPdf) {
+      formData.append('isPdf', 'true');
+    }
+    
     // Gửi request tới Python FastAPI server
     const response = await axios.post('http://localhost:8000/ocr', formData, {
       headers: formData.getHeaders()
     });
     
+    let responseData = response.data;
+    
+    // If PDF, check for multi-page data from Python server
+    if (isPdf && !responseData.pages) {
+      // If server hasn't already split pages, we do basic text-based page splitting here
+      // This is a fallback if the Python server doesn't handle PDF pages
+      const text = responseData.text || '';
+      const pages = text.split(/\f|\n{3,}/g)  // Split by form feed or multiple newlines
+        .filter(page => page.trim().length > 0)
+        .map(page => page.trim());
+      
+      if (pages.length > 1) {
+        responseData.pages = pages;
+        responseData.pageCount = pages.length;
+      }
+    }
+    
     // Trả về kết quả OCR từ Python server
-    return response.data;
+    return responseData;
   } catch (error) {
     logger.error(`Error during OCR processing: ${error.message}`);
     throw new Error(`OCR processing failed: ${error.message}`);

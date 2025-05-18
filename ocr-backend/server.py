@@ -101,12 +101,25 @@ def process_image(image_data, input_size=448):  # Use model's default size of 44
 @app.post("/ocr")
 async def ocr(
     file: UploadFile = File(...),
-    question: str = Form("<image>\nPlease extract the full and accurate text of the official Vietnamese government document shown in the image, including the title, issuing agency, document number, date, legal references, main content, clauses, and the name of the signatory (if any). Preserve the structure and formatting (e.g., bullet points, line breaks, numbered articles) as much as possible.")
+    question: str = Form("<image>\nPlease extract the full and accurate text of the official Vietnamese government document shown in the image, including the title, issuing agency, document number, date, legal references, main content, clauses, and the name of the signatory (if any). Preserve the structure and formatting (e.g., bullet points, line breaks, numbered articles) as much as possible."),
+    mode: str = Form("text"),
+    isPdf: str = Form(None)
 ):
     try:
-        print(f"Processing OCR request with prompt length: {len(question)} chars")
+        print(f"Processing OCR request with prompt length: {len(question)} chars, mode: {mode}, isPdf: {isPdf}")
         image_data = await file.read()
-        print(f"Image received, size: {len(image_data)} bytes")
+        print(f"File received, size: {len(image_data)} bytes")
+
+        # Handle PDF files specially to extract pages
+        if isPdf == 'true' or file.content_type == 'application/pdf':
+            print("Detected PDF file, processing pages...")
+            try:
+                return await process_pdf(image_data, question, mode)
+            except Exception as pdf_error:
+                print(f"Error processing PDF: {pdf_error}")
+                import traceback
+                traceback.print_exc()
+                # Continue with regular image processing as fallback
         
         # Process image
         try:
@@ -155,6 +168,116 @@ async def ocr(
         import traceback
         traceback.print_exc()
         return {"error": str(e), "text": "Failed to process request", "details": traceback.format_exc()}
+
+# New function to process PDF files and extract pages
+async def process_pdf(pdf_data, question, mode):
+    try:
+        print("Starting PDF processing...")
+        import io
+        import fitz  # PyMuPDF
+        
+        # Create a temporary file to handle PDF
+        pdf_stream = io.BytesIO(pdf_data)
+        
+        # Open the PDF file
+        try:
+            pdf_document = fitz.open(stream=pdf_stream, filetype="pdf")
+            print(f"PDF loaded with {pdf_document.page_count} pages")
+        except Exception as e:
+            print(f"Error opening PDF: {e}")
+            raise Exception(f"Could not open PDF file: {e}")
+        
+        pages_text = []
+        full_text = ""
+        page_images = []
+        
+        # Process each page
+        for page_num in range(pdf_document.page_count):
+            page = pdf_document[page_num]
+            
+            # Extract text first
+            try:
+                page_text = page.get_text()
+                pages_text.append(page_text)
+                full_text += page_text + "\n\n"
+                print(f"Text extracted from page {page_num + 1}, length: {len(page_text)}")
+            except Exception as text_error:
+                print(f"Error extracting text from page {page_num + 1}: {text_error}")
+                pages_text.append("")
+            
+            # Render page as image for OCR
+            try:
+                pix = page.get_pixmap(matrix=fitz.Matrix(300/72, 300/72))  # 300 DPI
+                img_bytes = io.BytesIO()
+                pix.pil_save(img_bytes, format="PNG")
+                img_bytes.seek(0)
+                page_images.append(img_bytes.getvalue())
+                print(f"Image rendered for page {page_num + 1}")
+            except Exception as img_error:
+                print(f"Error rendering page {page_num + 1} as image: {img_error}")
+        
+        # If text extraction yielded good results, use it
+        if len(full_text.strip()) > 100:  # Assume text extraction worked if we got a decent amount
+            result = {
+                "text": full_text,
+                "pages": pages_text,
+                "pageCount": pdf_document.page_count,
+                "status": "success"
+            }
+            print(f"Using extracted text from PDF with {pdf_document.page_count} pages")
+            return result
+        
+        # Otherwise try OCR on all page images
+        print("Text extraction inadequate, running OCR on page images...")
+        all_ocr_text = []
+        
+        # Process each page image through the model
+        for i, img_data in enumerate(page_images):
+            try:
+                # Process the image for model
+                pixel_values = process_image(img_data)
+                
+                # Model configuration
+                generation_config = dict(
+                    max_new_tokens=1024,
+                    do_sample=False,
+                    num_beams=4,
+                    repetition_penalty=3.5,
+                    length_penalty=1.0,
+                    early_stopping=True
+                )
+                
+                # Run model for this page
+                page_question = f"<image>\nExtract all text from this document page {i+1} of {len(page_images)}, preserving formatting."
+                
+                print(f"Running OCR on page {i+1}...")
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=UserWarning)
+                    warnings.filterwarnings("ignore", category=FutureWarning)
+                    page_response = model.chat(tokenizer, pixel_values, page_question, generation_config)
+                
+                all_ocr_text.append(page_response)
+                print(f"OCR completed for page {i+1}, got {len(page_response)} chars")
+                
+            except Exception as page_error:
+                print(f"Error processing page {i+1}: {page_error}")
+                all_ocr_text.append(f"[Error processing page {i+1}]")
+        
+        # Combine all OCR results
+        combined_text = "\n\n".join(all_ocr_text)
+        
+        return {
+            "text": combined_text,
+            "pages": all_ocr_text,
+            "pageCount": pdf_document.page_count,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        print(f"Error in process_pdf: {e}")
+        import traceback
+        traceback.print_exc()
+        raise e
 
 # API to check server status
 @app.get("/health")

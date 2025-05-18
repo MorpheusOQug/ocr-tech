@@ -13,11 +13,17 @@ function FileUpload({
     setPreview, 
     setError, 
     uploadedFiles,
-    setActivePage
+    setActivePage,
+    fileType,
+    setFileType,
+    pdfPageCount,
+    acceptTypes = "image/*,application/pdf", // Default to accept all image types and PDFs
+    title = "Upload Document",
+    description = "Drop your file here"
 }) {
     return (
         <div className="lg:w-1/3 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 overflow-hidden">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Upload Document</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">{title}</h3>
             
             <div 
                 className={`relative border-2 border-dashed rounded-xl transition-all duration-300 ${
@@ -36,12 +42,18 @@ function FileUpload({
                     {!image ? (
                         <div className="text-center">
                             <div className="mb-4 bg-blue-100 dark:bg-blue-900/30 p-4 inline-flex rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
+                                {acceptTypes.includes('application/pdf') && !acceptTypes.includes('image') ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                )}
                             </div>
                             <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                                Drop your file here
+                                {description}
                             </h3>
                             <p className="text-gray-500 dark:text-gray-400 mb-6">
                                 or browse from your computer
@@ -53,20 +65,28 @@ function FileUpload({
                                 </svg>
                                 <input
                                     type="file"
-                                    accept="image/*,application/pdf"
+                                    accept={acceptTypes}
                                     onChange={handleFileChange}
                                     className="hidden"
                                 />
                             </label>
                             <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-                                Supported formats: JPG, PNG, GIF, BMP, PDF
+                                {acceptTypes.includes('application/pdf') && acceptTypes.includes('image') && (
+                                    "Supported formats: JPG, PNG, GIF, BMP, PDF"
+                                )}
+                                {acceptTypes.includes('application/pdf') && !acceptTypes.includes('image') && (
+                                    "Supported format: PDF"
+                                )}
+                                {!acceptTypes.includes('application/pdf') && acceptTypes.includes('image') && (
+                                    "Supported formats: JPG, PNG, GIF, BMP"
+                                )}
                             </p>
                         </div>
                     ) : (
                         <div className="w-full flex flex-col items-center">
                             <div className="w-full flex flex-wrap md:flex-nowrap items-center justify-between gap-4 mb-4">
                                 <div className="flex items-center">
-                                    {preview ? (
+                                    {preview && fileType === 'image' ? (
                                         <div className="h-16 w-16 rounded overflow-hidden mr-4 border dark:border-gray-700 flex-shrink-0">
                                             <img
                                                 src={preview}
@@ -85,13 +105,16 @@ function FileUpload({
                                         <h3 className="text-md font-medium text-gray-800 dark:text-white truncate">{image.name}</h3>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">
                                             {(image.size / 1024).toFixed(1)} KB
+                                            {fileType === 'pdf' && pdfPageCount > 0 && (
+                                                <span className="ml-2">• {pdfPageCount} {pdfPageCount === 1 ? 'page' : 'pages'}</span>
+                                            )}
                                         </p>
                                     </div>
                                 </div>
                             </div>
                             
                             {/* Preview section */}
-                            {preview && (
+                            {preview && fileType === 'image' && (
                                 <div className="mt-2 w-full">
                                     <div className="relative rounded-lg overflow-hidden border dark:border-gray-700">
                                         <img
@@ -99,6 +122,23 @@ function FileUpload({
                                             alt="Preview"
                                             className="w-full max-h-[200px] object-contain"
                                         />
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {fileType === 'pdf' && (
+                                <div className="mt-2 w-full text-center py-4 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto mb-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <p className="text-gray-600 dark:text-gray-300">PDF Document with {pdfPageCount} {pdfPageCount === 1 ? 'page' : 'pages'}</p>
+                                    <div className="mt-3 flex justify-center">
+                                        <div className="py-1 px-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-full flex items-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                            PDF will be analyzed using OCR technology
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -169,20 +209,29 @@ function FileUpload({
                                 <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{file.name}</p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">{file.date}</p>
                             </div>
-                            <button className="p-1 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400">
+                            <button 
+                                className="p-1 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400"
+                            >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                 </svg>
                             </button>
                         </div>
                     ))}
+                    
                     {uploadedFiles.length > 3 && (
                         <button 
                             onClick={() => setActivePage('files')}
-                            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium w-full text-center py-2"
+                            className="w-full text-center py-2 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                         >
-                            View All Files
+                            View All Documents
                         </button>
+                    )}
+                    
+                    {uploadedFiles.length === 0 && (
+                        <div className="py-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+                            No documents uploaded yet
+                        </div>
                     )}
                 </div>
             </div>
