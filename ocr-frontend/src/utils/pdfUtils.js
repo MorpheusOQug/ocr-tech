@@ -1,4 +1,9 @@
-// PDF.js is loaded globally via CDN in index.html
+// Import PDF.js from the installed npm package
+import * as pdfjsLib from 'pdfjs-dist';
+import { GlobalWorkerOptions } from 'pdfjs-dist/build/pdf';
+
+// Set the worker source
+GlobalWorkerOptions.workerSrc = `//cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 /**
  * Load a PDF document from a file
@@ -7,21 +12,22 @@
  */
 export const loadPdfDocument = async (file) => {
   try {
-    if (!window.pdfjsLib) {
-      throw new Error('PDF.js library not loaded. Check your internet connection.');
-    }
-    
+    // Use the imported pdfjsLib instead of checking window.pdfjsLib
     let fileData;
 
     if (file instanceof File) {
       // If file is a File object, convert to ArrayBuffer
-      fileData = await file.arrayBuffer();
+      const arrayBuffer = await file.arrayBuffer();
+      fileData = { data: arrayBuffer };
+    } else if (typeof file === 'string') {
+      // If it's a URL string
+      fileData = { url: file };
     } else {
-      // Otherwise, assume it's a URL or data URL
+      // Assume it's already a valid parameter object
       fileData = file;
     }
 
-    const loadingTask = window.pdfjsLib.getDocument(fileData);
+    const loadingTask = pdfjsLib.getDocument(fileData);
     return await loadingTask.promise;
   } catch (error) {
     console.error('Error loading PDF document:', error);

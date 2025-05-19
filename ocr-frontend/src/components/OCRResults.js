@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
 import IdCardForm from './IdCardForm';
+import OfficialDocumentForm from './OfficialDocumentForm';
 import { getIdCard, getUserIdCards } from '../services/idCardService';
+import { getUserDocuments } from '../services/officialDocumentService';
 
 function OCRResults({ 
     resultBoxRef, 
@@ -38,11 +40,24 @@ function OCRResults({
         personImage: null,
         qrImage: null
     });
+    const [documentData, setDocumentData] = useState({
+        officialNumber: '',
+        cardNumber: '',
+        fullName: '',
+        content: '',
+        address: '',
+        recipientName: '',
+        documentImage: null
+    });
     const [isFormSubmitted, setIsFormSubmitted] = useState(false);
     const [showIdCardsList, setShowIdCardsList] = useState(false);
+    const [showDocumentsList, setShowDocumentsList] = useState(false);
     const [userCards, setUserCards] = useState([]);
+    const [userDocuments, setUserDocuments] = useState([]);
     const [isLoadingCards, setIsLoadingCards] = useState(false);
+    const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
     const [cardListError, setCardListError] = useState(null);
+    const [documentListError, setDocumentListError] = useState(null);
     
     // Load existing ID card data on component mount
     useEffect(() => {
@@ -296,6 +311,170 @@ function OCRResults({
         );
     };
     
+    // Handle document data changes
+    const handleDocumentChange = (e) => {
+        const { name, value } = e.target;
+        setDocumentData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+    
+    // Handle document image upload
+    const handleDocumentImageUpload = (e, field) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setDocumentData(prev => ({
+                    ...prev,
+                    [field]: reader.result,
+                    [`${field}File`]: file // Store the file object for API upload
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    // Handle official document submit (similar to ID card submit)
+    const handleDocumentSubmit = async () => {
+        setDocumentListError(null);
+        setIsLoadingDocuments(true);
+        try {
+            // Fetch user's saved documents
+            const response = await getUserDocuments();
+            if (response && response.data) {
+                setUserDocuments(response.data);
+                setShowDocumentsList(true);
+            } else {
+                // If no documents exist or error in format, go directly to new document form
+                setIsFormSubmitted(true);
+            }
+        } catch (error) {
+            console.error('Error fetching official documents:', error);
+            setDocumentListError(error.message || 'Failed to load official documents');
+            // If error, still allow creating a new document
+            setIsFormSubmitted(true);
+        } finally {
+            setIsLoadingDocuments(false);
+        }
+    };
+
+    // Create new blank document
+    const handleCreateNewDocument = () => {
+        setDocumentData({
+            officialNumber: '',
+            cardNumber: '',
+            fullName: '',
+            content: '',
+            address: '',
+            recipientName: '',
+            documentImage: null
+        });
+        setShowDocumentsList(false);
+        setIsFormSubmitted(true);
+    };
+
+    // Handle selection of existing document
+    const handleSelectDocument = (document) => {
+        setDocumentData({
+            _id: document._id,
+            officialNumber: document.officialNumber,
+            cardNumber: document.cardNumber,
+            fullName: document.fullName,
+            content: document.content,
+            address: document.address,
+            recipientName: document.recipientName,
+            documentImage: document.documentImage?.driveUrl || null
+        });
+        setShowDocumentsList(false);
+        setIsFormSubmitted(true);
+    };
+
+    // Render documents list
+    const renderDocumentsList = () => {
+        return (
+            <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-medium text-gray-800 dark:text-gray-200">Select Official Document</h4>
+                    <button 
+                        onClick={() => setShowDocumentsList(false)}
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                {documentListError && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                        <p>{documentListError}</p>
+                    </div>
+                )}
+
+                {isLoadingDocuments ? (
+                    <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                    </div>
+                ) : userDocuments.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p className="mb-2">You don't have any official documents saved</p>
+                        <button 
+                            onClick={handleCreateNewDocument}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                            Create New Document
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="space-y-3 mb-6">
+                            {userDocuments.map(document => (
+                                <div 
+                                    key={document._id} 
+                                    className="p-4 border rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700 cursor-pointer transition-colors flex justify-between items-center"
+                                    onClick={() => handleSelectDocument(document)}
+                                >
+                                    <div>
+                                        <div className="font-medium text-gray-800 dark:text-gray-200">{document.fullName}</div>
+                                        <div className="text-sm text-gray-500 dark:text-gray-400">Số: {document.officialNumber}</div>
+                                        <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                            Updated: {new Date(document.updatedAt).toLocaleDateString('vi-VN')}
+                                        </div>
+                                    </div>
+                                    <button 
+                                        className="px-3 py-1 bg-blue-100 text-blue-600 dark:bg-blue-700 dark:text-blue-200 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-600 transition-colors"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSelectDocument(document);
+                                        }}
+                                    >
+                                        Select
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-center border-t border-gray-200 dark:border-gray-700 pt-4">
+                            <button 
+                                onClick={handleCreateNewDocument}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Create New Document
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
+        );
+    };
+    
     return (
         <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
             {/* <div className="border-b border-gray-200 dark:border-gray-700 p-4">
@@ -430,7 +609,7 @@ function OCRResults({
                                 <div className="flex items-center mb-3">
                                     <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center mr-2 text-white">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                                         </svg>
                                     </div>
                                     <div>
@@ -611,7 +790,7 @@ function OCRResults({
                                                     </svg>
                                                 </div>
                                                 <div className="text-left">
-                                                    <h5 className="font-medium text-gray-800 dark:text-gray-200">Nghị Quyết</h5>
+                                                    <h5 className="font-medium text-gray-800 dark:text-gray-200">Công văn</h5>
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">Extract resolution document data</p>
                                                 </div>
                                             </button>
@@ -670,10 +849,43 @@ function OCRResults({
                                     </div>
                                 )}
                                 
-                                {(selectedForm === 'resolution' || selectedForm === 'decision') && !isFormSubmitted && (
+                                {/* Document Selection List */}
+                                {selectedForm === 'resolution' && !isFormSubmitted && showDocumentsList && renderDocumentsList()}
+                                
+                                {/* Document Submit Button */}
+                                {selectedForm === 'resolution' && !isFormSubmitted && !showDocumentsList && (
                                     <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                                         <h5 className="font-medium text-gray-800 dark:text-gray-200 mb-2">
-                                            Selected: {selectedForm === 'resolution' ? 'Nghị Quyết' : 'Quyết Định'}
+                                            Selected: Công Văn
+                                        </h5>
+                                        <button 
+                                            onClick={handleDocumentSubmit}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                                        >
+                                            Submit
+                                        </button>
+                                    </div>
+                                )}
+                                
+                                {/* Official Document Form */}
+                                {selectedForm === 'resolution' && isFormSubmitted && (
+                                    <div className="absolute inset-0">
+                                        <OfficialDocumentForm 
+                                            documentData={documentData}
+                                            setDocumentData={setDocumentData}
+                                            isFormSubmitted={isFormSubmitted}
+                                            setIsFormSubmitted={setIsFormSubmitted}
+                                            handleDocumentChange={handleDocumentChange}
+                                            handleImageUpload={handleDocumentImageUpload}
+                                        />
+                                    </div>
+                                )}
+                                
+                                {/* Handle decision type separately */}
+                                {selectedForm === 'decision' && !isFormSubmitted && (
+                                    <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                        <h5 className="font-medium text-gray-800 dark:text-gray-200 mb-2">
+                                            Selected: Quyết Định
                                         </h5>
                                         <button 
                                             onClick={() => setIsFormSubmitted(true)}

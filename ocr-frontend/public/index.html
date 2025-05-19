@@ -16,11 +16,11 @@
     -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <!-- PDF.js library and worker -->
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@5.2.133/build/pdf.min.js"></script>
     <script>
       // Set worker path
       if (window.pdfjsLib) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js';
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.2.133/build/pdf.worker.min.js';
       }
     </script>
     <!--

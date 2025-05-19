@@ -15,6 +15,7 @@ const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const idcardRoutes = require('./routes/idcardRoutes');
+const officialDocumentRoutes = require('./routes/officialDocumentRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -33,6 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api', documentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', idcardRoutes);
+app.use('/api', officialDocumentRoutes);
 
 // Đảm bảo thư mục uploads tồn tại
 const fs = require('fs');

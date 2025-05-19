@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
 
 const PdfViewer = ({ file, scale = 1.0, onPageChange }) => {
   const [numPages, setNumPages] = useState(null);
@@ -8,6 +9,10 @@ const PdfViewer = ({ file, scale = 1.0, onPageChange }) => {
   const [pdf, setPdf] = useState(null);
   
   const canvasRef = useRef(null);
+  // Reference to track if a render operation is in progress
+  const renderingRef = useRef(false);
+  // Reference to store the current render task for cancellation
+  const renderTaskRef = useRef(null);
 
   // Load the PDF document when file changes
   useEffect(() => {
@@ -18,11 +23,23 @@ const PdfViewer = ({ file, scale = 1.0, onPageChange }) => {
 
     const loadPdf = async () => {
       try {
-        if (!window.pdfjsLib) {
-          throw new Error('PDF.js library not loaded. Check your internet connection.');
+        // Convert File object to ArrayBuffer
+        let fileData;
+        if (file instanceof File) {
+          const arrayBuffer = await file.arrayBuffer();
+          fileData = { data: arrayBuffer };
+        } else if (typeof file === 'string') {
+          // For URL strings, check if it's a valid URL
+          if (file.startsWith('blob:') || file.startsWith('http:') || file.startsWith('https:') || file.startsWith('data:')) {
+            fileData = { url: file };
+          } else {
+            throw new Error(`Invalid URL format: ${file}`);
+          }
+        } else {
+          fileData = file;
         }
         
-        const loadingTask = window.pdfjsLib.getDocument(file);
+        const loadingTask = pdfjsLib.getDocument(fileData);
         const pdfDocument = await loadingTask.promise;
         
         setPdf(pdfDocument);
@@ -40,29 +57,59 @@ const PdfViewer = ({ file, scale = 1.0, onPageChange }) => {
 
     // Cleanup on unmount or when file changes
     return () => {
-      if (pdf) {
-        pdf.destroy();
-        setPdf(null);
+      // Cancel any ongoing render task
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
       }
+      
+      // Reset rendering flag
+      renderingRef.current = false;
+      
+      setPdf((currentPdf) => {
+        if (currentPdf) {
+          currentPdf.destroy();
+        }
+        return null;
+      });
     };
-  }, [file, pdf]);
+  }, [file]);
 
   // Render the current page
   useEffect(() => {
     if (!pdf || !canvasRef.current) return;
 
     const renderPage = async () => {
+      // If already rendering, cancel the previous render
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+      
+      // Set rendering flag
+      renderingRef.current = true;
       setLoading(true);
+      setError(null);
+      
       try {
         const page = await pdf.getPage(currentPage);
         
         // Scale the viewport to fit the canvas
         const viewport = page.getViewport({ scale });
         const canvas = canvasRef.current;
+        
+        // Check if canvas is still available (component not unmounted)
+        if (!canvas) {
+          return;
+        }
+        
         const context = canvas.getContext('2d');
         
         canvas.height = viewport.height;
         canvas.width = viewport.width;
+        
+        // Clear the canvas before rendering
+        context.clearRect(0, 0, canvas.width, canvas.height);
         
         // Render the page content
         const renderContext = {
@@ -70,16 +117,47 @@ const PdfViewer = ({ file, scale = 1.0, onPageChange }) => {
           viewport: viewport,
         };
 
-        await page.render(renderContext).promise;
+        // Store the render task for potential cancellation
+        renderTaskRef.current = page.render(renderContext);
+        
+        // Wait for render to complete
+        await renderTaskRef.current.promise;
+        
+        // Clear the reference after successful render
+        renderTaskRef.current = null;
       } catch (err) {
-        console.error('Error rendering PDF page:', err);
-        setError('Failed to render PDF page');
+        // Check for cancellation errors - they can have different formats
+        const isCancelled = 
+          (err.name === 'RenderingCancelledException') || 
+          (err.message && err.message.includes('Rendering cancelled')) ||
+          (err.type === 'canvas' && err.message && err.message.includes('cancelled'));
+          
+        if (!isCancelled) {
+          console.error('Error rendering PDF page:', err);
+          setError('Failed to render PDF page: ' + (err.message || 'Unknown error'));
+        } else {
+          console.log('Rendering was cancelled for page transition');
+        }
       } finally {
-        setLoading(false);
+        // Only update loading state if component is still mounted
+        if (canvasRef.current) {
+          setLoading(false);
+          renderingRef.current = false;
+        }
       }
     };
 
-    renderPage();
+    // Use a small delay to avoid rapid successive renders
+    const timerId = setTimeout(() => {
+      renderPage();
+    }, 50);
+
+    return () => {
+      clearTimeout(timerId);
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+      }
+    };
   }, [pdf, currentPage, scale]);
 
   // Notify parent component when page changes
@@ -129,8 +207,8 @@ const PdfViewer = ({ file, scale = 1.0, onPageChange }) => {
         <div className="flex justify-between items-center w-full p-2 border-t dark:border-gray-700">
           <button 
             onClick={goToPreviousPage} 
-            disabled={currentPage <= 1}
-            className={`px-3 py-1 rounded-lg ${currentPage <= 1 ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
+            disabled={currentPage <= 1 || loading}
+            className={`px-3 py-1 rounded-lg ${currentPage <= 1 || loading ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
           >
             Previous
           </button>
@@ -143,8 +221,8 @@ const PdfViewer = ({ file, scale = 1.0, onPageChange }) => {
           
           <button 
             onClick={goToNextPage} 
-            disabled={currentPage >= numPages}
-            className={`px-3 py-1 rounded-lg ${currentPage >= numPages ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
+            disabled={currentPage >= numPages || loading}
+            className={`px-3 py-1 rounded-lg ${currentPage >= numPages || loading ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
           >
             Next
           </button>

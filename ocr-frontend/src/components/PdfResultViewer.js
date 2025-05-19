@@ -15,6 +15,7 @@ const PdfResultViewer = ({
 }) => {
   const [viewMode, setViewMode] = useState('split'); // 'split', 'pdf', or 'text'
   const resultBoxRef = useRef(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   
   // Use currentPage from parent or local state as fallback
   const currentPageIndex = currentPage !== undefined ? currentPage : 0;
@@ -24,19 +25,20 @@ const PdfResultViewer = ({
   const pageTexts = ocrResult?.pages || [];
   const currentText = pageTexts[currentPageIndex] || ocrResult?.text || '';
   
-  // For PDF preview
-  const previewUrl = pdfFile instanceof File 
-    ? URL.createObjectURL(pdfFile) 
-    : (typeof pdfFile === 'string' ? pdfFile : null);
-  
-  // Clean up URL object to prevent memory leaks
+  // Create object URL for the PDF file when it changes
   useEffect(() => {
-    return () => {
-      if (pdfFile instanceof File && previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [pdfFile, previewUrl]);
+    if (pdfFile instanceof File) {
+      const url = URL.createObjectURL(pdfFile);
+      setPreviewUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else if (typeof pdfFile === 'string') {
+      setPreviewUrl(pdfFile);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [pdfFile]);
 
   // Sync page changes between PDF view and OCR text
   const handlePageChange = (newPageIndex) => {
