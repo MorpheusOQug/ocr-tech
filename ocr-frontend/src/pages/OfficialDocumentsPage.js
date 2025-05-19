@@ -321,7 +321,7 @@ function OfficialDocumentsPage() {
                             <div className="p-4">
                                 <h3 className="font-medium text-lg mb-2 truncate">{document.officialNumber}</h3>
                                 <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                                    <p><span className="font-medium">Name:</span> {document.fullName}</p>
+                                    <p><span className="font-medium">Dear Name:</span> {document.dearName || document.fullName}</p>
                                     <p className="line-clamp-2"><span className="font-medium">Content:</span> {document.content}</p>
                                 </div>
                                 <div className="mt-4 flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">

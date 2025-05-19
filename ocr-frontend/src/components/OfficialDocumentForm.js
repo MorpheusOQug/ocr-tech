@@ -11,7 +11,7 @@ export const selectDocumentById = async (documentId, setDocumentData) => {
                 _id: response.data._id,
                 officialNumber: response.data.officialNumber,
                 documentDate: response.data.documentDate ? new Date(response.data.documentDate).toISOString().split('T')[0] : '',
-                fullName: response.data.fullName,
+                fullName: response.data.dearName,
                 content: response.data.content,
                 address: response.data.address,
                 recipientName: response.data.recipientName
@@ -91,7 +91,7 @@ function OfficialDocumentForm({
             
             // Validate required fields
             if (!documentData.officialNumber || !documentData.fullName) {
-                setSaveError('Official document number and full name are required.');
+                setSaveError('Official document number and dear name are required.');
                 return;
             }
             
@@ -174,7 +174,7 @@ function OfficialDocumentForm({
             _id: document._id,
             officialNumber: document.officialNumber,
             documentDate: document.documentDate ? new Date(document.documentDate).toISOString().split('T')[0] : '',
-            fullName: document.fullName,
+            fullName: document.dearName || document.fullName,
             content: document.content,
             address: document.address,
             recipientName: document.recipientName
@@ -324,14 +324,14 @@ function OfficialDocumentForm({
                                 <input 
                                     type="text" 
                                     className="w-2/3 p-2 bg-gray-500 dark:bg-gray-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    placeholder="Enter full name"
+                                    placeholder="Enter dear name"
                                     name="fullName"
                                     value={documentData.fullName}
                                     onChange={handleDocumentChange}
                                 />
                             ) : (
                                 <div className="w-2/3 p-2 bg-gray-500 dark:bg-gray-600 rounded text-gray-300">
-                                    {documentData.fullName || 'Enter full name'}
+                                    {documentData.fullName || 'Enter dear name'}
                                 </div>
                             )}
                         </div>

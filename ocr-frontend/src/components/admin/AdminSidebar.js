@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 function AdminSidebar({ activeTab, setActiveTab, onLogout }) {
     const navItems = [
         { id: 'users', label: 'User Management', icon: 'fas fa-users' },
-        { id: 'documents', label: 'Document Management', icon: 'fas fa-file-alt' }
+        { id: 'documents', label: 'Document Management', icon: 'fas fa-file-alt' },
+        { id: 'schema', label: 'Database Schema', icon: 'fas fa-project-diagram' }
     ];
 
     return (

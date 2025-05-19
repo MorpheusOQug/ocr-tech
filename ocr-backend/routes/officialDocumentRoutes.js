@@ -105,7 +105,7 @@ router.post('/document', protect, upload.fields([
     if (!officialNumber || !fullName) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Official number and full name are required' 
+        message: 'Official number and dear name are required' 
       });
     }
     
@@ -154,7 +154,7 @@ router.post('/document', protect, upload.fields([
     const documentData = {
       officialNumber,
       documentDate: documentDate ? new Date(documentDate) : undefined,
-      fullName,
+      dearName: fullName,
       content,
       address,
       recipientName,

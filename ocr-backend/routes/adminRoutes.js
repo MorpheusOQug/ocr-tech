@@ -4,7 +4,8 @@ const {
   getUsers,
   updateUser,
   deleteUser,
-  getAllDocuments
+  getAllDocuments,
+  getSchema
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/auth');
 
@@ -18,5 +19,6 @@ router.get('/users', protect, admin, getUsers);
 router.put('/users/:id', protect, admin, updateUser);
 router.delete('/users/:id', protect, admin, deleteUser);
 router.get('/documents', protect, admin, getAllDocuments);
+router.get('/schema', protect, admin, getSchema);
 
 module.exports = router; 

@@ -14,7 +14,7 @@ const officialDocumentSchema = new mongoose.Schema({
   documentDate: {
     type: Date
   },
-  fullName: {
+  dearName: {
     type: String,
     required: true,
     trim: true

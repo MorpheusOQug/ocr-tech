@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import AdminSidebar from './AdminSidebar';
 import UserManagement from './UserManagement';
 import DocumentManagement from './DocumentManagement';
+import SchemaVisualization from './SchemaVisualization';
 
 function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('users');
@@ -41,6 +42,7 @@ function AdminDashboard() {
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                     {activeTab === 'users' && <UserManagement />}
                     {activeTab === 'documents' && <DocumentManagement />}
+                    {activeTab === 'schema' && <SchemaVisualization />}
                 </div>
             </div>
         </div>

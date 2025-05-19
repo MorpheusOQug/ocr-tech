@@ -15,15 +15,18 @@ export const AdminProvider = ({ children }) => {
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [schema, setSchema] = useState(null);
     const { token } = useAuth();
     
     // Caching system for API responses
     const cache = useRef({
         users: new Map(),
         documents: new Map(),
+        schema: null,
         timestamp: {
             users: new Map(),
-            documents: new Map()
+            documents: new Map(),
+            schema: 0
         }
     });
     
@@ -200,6 +203,54 @@ export const AdminProvider = ({ children }) => {
         }
     }, [loading, getCache, setCache]);
 
+    // Fetch database schema - wrapped in useCallback
+    const fetchSchema = useCallback(async () => {
+        // Avoid multiple simultaneous requests
+        if (loading) return null;
+        
+        // Check cache first
+        if (isCacheValid('schema', 'schema')) {
+            const cachedSchema = cache.current.schema;
+            setSchema(cachedSchema);
+            return cachedSchema;
+        }
+        
+        // Cancel previous request if exists
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        
+        // Create new abort controller
+        abortControllerRef.current = new AbortController();
+        
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await axios.get(`${API_URL}/admin/schema`, {
+                timeout: 30000, // Increase timeout to 30 seconds
+                signal: abortControllerRef.current.signal
+            });
+            
+            // Cache the schema
+            cache.current.schema = response.data;
+            cache.current.timestamp.schema = Date.now();
+            
+            setSchema(response.data);
+            return response.data;
+        } catch (error) {
+            // Don't handle aborted requests as errors
+            if (error.name === 'AbortError' || axios.isCancel(error)) {
+                return null;
+            }
+            
+            console.error('Error fetching schema:', error);
+            setError(error.response?.data?.message || 'Failed to fetch schema');
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }, [loading, isCacheValid]);
+
     // Update user
     const updateUser = useCallback(async (userId, userData) => {
         setLoading(true);
@@ -253,25 +304,31 @@ export const AdminProvider = ({ children }) => {
         cache.current = {
             users: new Map(),
             documents: new Map(),
+            schema: null,
             timestamp: {
                 users: new Map(),
-                documents: new Map()
+                documents: new Map(),
+                schema: 0
             }
         };
     }, []);
 
     return (
-        <AdminContext.Provider value={{ 
-            users,
-            documents,
-            loading,
-            error,
-            fetchUsers,
-            fetchDocuments,
-            updateUser,
-            deleteUser,
-            clearCache
-        }}>
+        <AdminContext.Provider
+            value={{
+                users,
+                documents,
+                loading,
+                error,
+                schema,
+                fetchUsers,
+                fetchDocuments,
+                updateUser,
+                deleteUser,
+                fetchSchema,
+                clearCache
+            }}
+        >
             {children}
         </AdminContext.Provider>
     );

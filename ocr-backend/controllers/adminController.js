@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Document = require('../models/Document');
+const IdCard = require('../models/IdCard');
+const OfficialDocument = require('../models/OfficialDocument');
 const logger = require('../utils/logger');
 
 // Admin login
@@ -256,10 +258,74 @@ const getAllDocuments = async (req, res) => {
   }
 };
 
+// Get database schema for visualization (admin only)
+const getSchema = async (req, res) => {
+  try {
+    // Create a schema object that represents the models and their relationships
+    const schema = {
+      User: extractSchema(User.schema),
+      Document: extractSchema(Document.schema),
+      IdCard: extractSchema(IdCard.schema),
+      OfficialDocument: extractSchema(OfficialDocument.schema)
+    };
+    
+    res.json(schema);
+  } catch (error) {
+    logger.error(`Error getting schema: ${error.message}`);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Helper function to extract schema information from a Mongoose schema
+function extractSchema(mongooseSchema) {
+  const result = {};
+  
+  // Process all fields in the schema
+  Object.keys(mongooseSchema.paths).forEach(path => {
+    // Skip __v and _id fields
+    if (path === '__v' || path === '_id') return;
+    
+    const schemaType = mongooseSchema.paths[path];
+    const fieldInfo = {};
+    
+    // Get the type
+    if (schemaType.instance === 'ObjectID' && schemaType.options.ref) {
+      fieldInfo.type = 'ObjectId';
+      fieldInfo.ref = schemaType.options.ref;
+    } else if (schemaType.instance === 'Array' && schemaType.schema) {
+      fieldInfo.type = 'Array';
+      fieldInfo.items = extractSchema(schemaType.schema);
+    } else if (schemaType.instance === 'Mixed') {
+      fieldInfo.type = 'Mixed';
+    } else {
+      fieldInfo.type = schemaType.instance;
+    }
+    
+    // Get other field attributes
+    if (schemaType.options.required) {
+      fieldInfo.required = true;
+    }
+    
+    if (schemaType.options.default !== undefined) {
+      fieldInfo.default = schemaType.options.default;
+    }
+    
+    if (schemaType.options.enum) {
+      fieldInfo.enum = schemaType.options.enum;
+    }
+    
+    // Add the field to the result
+    result[path] = fieldInfo;
+  });
+  
+  return result;
+}
+
 module.exports = {
   adminLogin,
   getUsers,
   updateUser,
   deleteUser,
-  getAllDocuments
+  getAllDocuments,
+  getSchema
 }; 
