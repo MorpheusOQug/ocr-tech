@@ -36,7 +36,7 @@ function Home() {
     ];
 
     return (
-        <div className="min-h-screen overflow-hidden">
+        <div className="flex flex-col w-full overflow-hidden">
             {/* Top right dark mode toggle */}
             <div className="absolute top-20 right-4 z-10">
                 <button 

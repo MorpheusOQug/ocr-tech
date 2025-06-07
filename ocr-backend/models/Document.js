@@ -21,7 +21,8 @@ const documentSchema = new mongoose.Schema({
     required: true
   },
   userId: {
-    type: mongoose.Schema.Types.Mixed, // Can be ObjectId or String
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
   },
   ocrResult: {

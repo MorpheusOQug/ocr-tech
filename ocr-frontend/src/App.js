@@ -7,9 +7,13 @@ import BlogPost from "./pages/BlogPost";
 import Navbar from "./components/Navbar";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AdminProvider } from "./context/AdminContext";
 import { ValidationProvider } from "./context/ValidationContext";
 import Login from "./components/Login";
 import Register from "./components/Register";
+import VerifyCode from "./components/VerifyCode";
+import AdminLogin from "./components/AdminLogin";
+import AdminDashboard from "./components/admin/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 // Future flags for React Router v7
@@ -41,6 +45,28 @@ const LoadingScreen = () => (
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
+    const { isAuthenticated, isVerified, isLoading } = useAuth();
+    
+    // Show loading screen while checking authentication
+    if (isLoading) {
+        return <LoadingScreen />;
+    }
+    
+    // Redirect to login if not authenticated
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
+    
+    // Redirect to verification page if authenticated but not verified
+    if (!isVerified) {
+        return <Navigate to="/verify-code" replace state={{ justRegistered: true }} />;
+    }
+    
+    return children;
+};
+
+// Admin Route component
+const AdminRoute = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuth();
     
     // Show loading screen while checking authentication
@@ -48,8 +74,14 @@ const ProtectedRoute = ({ children }) => {
         return <LoadingScreen />;
     }
     
+    // Redirect to admin login if not authenticated
     if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/admin/login" replace />;
+    }
+    
+    // Check if the user is the hardcoded admin (only admin@admin.com can access)
+    if (localStorage.getItem('userEmail') !== 'admin@admin.com') {
+        return <Navigate to="/" replace />;
     }
     
     return children;
@@ -58,32 +90,49 @@ const ProtectedRoute = ({ children }) => {
 function App() {
     return (
         <AuthProvider>
-            <ThemeProvider>
-                <ValidationProvider>
-                    <Router future={routerFutureConfig}>
-                        <Navbar />
-                        <div className="pt-16 min-h-screen bg-gray-50 dark:bg-darkBg">
-                            <Routes>
-                                <Route path="/" element={<Home />} />
-                                <Route path="/login" element={<Login />} />
-                                <Route path="/register" element={<Register />} />
-                                <Route 
-                                    path="/ocr" 
-                                    element={
-                                        <ProtectedRoute>
-                                            <OCRPage />
-                                        </ProtectedRoute>
-                                    } 
-                                />
-                                <Route path="/blog" element={<Blog />} />
-                                <Route path="/blog/:id" element={<BlogPost />} />
-                                <Route path="/solutions" element={<Solutions />} />
-                                <Route path="*" element={<NotFound />} />
-                            </Routes>
-                        </div>
-                    </Router>
-                </ValidationProvider>
-            </ThemeProvider>
+            <AdminProvider>
+                <ThemeProvider>
+                    <ValidationProvider>
+                        <Router future={routerFutureConfig}>
+                            <div className="flex flex-col min-h-screen overflow-x-hidden">
+                            <Navbar />
+                                <main className="flex-grow bg-gray-50 dark:bg-darkBg pt-16 mx-auto w-full max-w-full">
+                                <Routes>
+                                    <Route path="/" element={<Home />} />
+                                    <Route path="/login" element={<Login />} />
+                                    <Route path="/register" element={<Register />} />
+                                    <Route path="/verify-code" element={<VerifyCode />} />
+                                    <Route 
+                                        path="/ocr" 
+                                        element={
+                                            <ProtectedRoute>
+                                                <OCRPage />
+                                            </ProtectedRoute>
+                                        } 
+                                    />
+                                    <Route path="/blog" element={<Blog />} />
+                                    <Route path="/blog/:id" element={<BlogPost />} />
+                                    <Route path="/solutions" element={<Solutions />} />
+                                    
+                                    {/* Admin Routes */}
+                                    <Route path="/admin/login" element={<AdminLogin />} />
+                                    <Route 
+                                        path="/admin/dashboard" 
+                                        element={
+                                            <AdminRoute>
+                                                <AdminDashboard />
+                                            </AdminRoute>
+                                        } 
+                                    />
+                                    
+                                    <Route path="*" element={<NotFound />} />
+                                </Routes>
+                                </main>
+                            </div>
+                        </Router>
+                    </ValidationProvider>
+                </ThemeProvider>
+            </AdminProvider>
         </AuthProvider>
     );
 }

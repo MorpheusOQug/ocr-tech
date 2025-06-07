@@ -1,0 +1,151 @@
+{
+  "User": {
+    "username": {
+      "type": "String"
+    },
+    "email": {
+      "type": "String"
+    },
+    "password": {
+      "type": "String"
+    },
+    "isVerified": {
+      "type": "Boolean"
+    },
+    "isAdmin": {
+      "type": "Boolean"
+    },
+    "createdAt": {
+      "type": "Date"
+    }
+  },
+  "Document": {
+    "name": {
+      "type": "String"
+    },
+    "originalName": {
+      "type": "String"
+    },
+    "type": {
+      "type": "String"
+    },
+    "size": {
+      "type": "Number"
+    },
+    "userId": {
+      "type": "ObjectId",
+      "ref": "User"
+    },
+    "ocrResult": {
+      "type": "Mixed"
+    },
+    "mode": {
+      "type": "String"
+    },
+    "driveId": {
+      "type": "String"
+    },
+    "driveUrl": {
+      "type": "String"
+    },
+    "driveFolderId": {
+      "type": "String"
+    },
+    "createdAt": {
+      "type": "Date"
+    },
+    "updatedAt": {
+      "type": "Date"
+    }
+  },
+  "IdCard": {
+    "user": {
+      "type": "ObjectId",
+      "ref": "User"
+    },
+    "cardNumber": {
+      "type": "String"
+    },
+    "fullName": {
+      "type": "String"
+    },
+    "dateOfBirth": {
+      "type": "Date"
+    },
+    "sex": {
+      "type": "String"
+    },
+    "nationality": {
+      "type": "String"
+    },
+    "placeOfOrigin": {
+      "type": "String"
+    },
+    "placeOfResidence": {
+      "type": "String"
+    },
+    "dateOfExpiry": {
+      "type": "Date"
+    },
+    "portraitImage.driveId": {
+      "type": "String"
+    },
+    "portraitImage.driveUrl": {
+      "type": "String"
+    },
+    "logoImage.driveId": {
+      "type": "String"
+    },
+    "logoImage.driveUrl": {
+      "type": "String"
+    },
+    "qrImage.driveId": {
+      "type": "String"
+    },
+    "qrImage.driveUrl": {
+      "type": "String"
+    },
+    "createdAt": {
+      "type": "Date"
+    },
+    "updatedAt": {
+      "type": "Date"
+    }
+  },
+  "OfficialDocument": {
+    "user": {
+      "type": "ObjectId",
+      "ref": "User"
+    },
+    "officialNumber": {
+      "type": "String"
+    },
+    "documentDate": {
+      "type": "Date"
+    },
+    "dearName": {
+      "type": "String"
+    },
+    "content": {
+      "type": "String"
+    },
+    "address": {
+      "type": "String"
+    },
+    "recipientName": {
+      "type": "String"
+    },
+    "documentImage.driveId": {
+      "type": "String"
+    },
+    "documentImage.driveUrl": {
+      "type": "String"
+    },
+    "createdAt": {
+      "type": "Date"
+    },
+    "updatedAt": {
+      "type": "Date"
+    }
+  }
+}

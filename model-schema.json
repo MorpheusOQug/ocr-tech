@@ -1,0 +1,139 @@
+{
+  "Document": {
+    "name": {
+      "type": "String"
+    },
+    "originalName": {
+      "type": "String"
+    },
+    "type": {
+      "type": "String"
+    },
+    "size": {
+      "type": "Number"
+    },
+    "userId": {
+      "ref": "User",
+      "type": "ObjectId"
+    },
+    "ocrResult": {
+      "type": "Mixed"
+    },
+    "mode": {
+      "type": "String"
+    },
+    "driveId": {
+      "type": "String"
+    },
+    "driveUrl": {
+      "type": "String"
+    },
+    "driveFolderId": {
+      "type": "String"
+    },
+    "createdAt": {
+      "type": "Date"
+    },
+    "updatedAt": {
+      "type": "Date"
+    }
+  },
+  "IdCard": {
+    "user": {
+      "ref": "User",
+      "type": "ObjectId"
+    },
+    "cardNumber": {
+      "type": "String"
+    },
+    "fullName": {
+      "type": "String"
+    },
+    "dateOfBirth": {
+      "type": "Date"
+    },
+    "sex": {
+      "type": "String"
+    },
+    "nationality": {
+      "type": "String"
+    },
+    "placeOfOrigin": {
+      "type": "String"
+    },
+    "placeOfResidence": {
+      "type": "String"
+    },
+    "dateOfExpiry": {
+      "type": "Date"
+    },
+    "portraitImage": {
+      "type": "String"
+    },
+    "logoImage": {
+      "type": "String"
+    },
+    "qrImage": {
+      "type": "String"
+    },
+    "createdAt": {
+      "type": "Date"
+    },
+    "updatedAt": {
+      "type": "Date"
+    }
+  },
+  "OfficialDocument": {
+    "user": {
+      "ref": "User",
+      "type": "ObjectId"
+    },
+    "officialNumber": {
+      "type": "String"
+    },
+    "documentDate": {
+      "type": "Date"
+    },
+    "dearName": {
+      "type": "String"
+    },
+    "content": {
+      "type": "String"
+    },
+    "address": {
+      "type": "String"
+    },
+    "recipientName": {
+      "type": "String"
+    },
+    "documentImage": {
+      "type": "String"
+    },
+    "createdAt": {
+      "type": "Date"
+    },
+    "updatedAt": {
+      "type": "Date"
+    }
+  },
+  "User": {
+    "username": {
+      "type": "String"
+    },
+    "email": {
+      "type": "String"
+    },
+    "password": {
+      "type": "String"
+    },
+    "isVerified": {
+      "type": "Boolean"
+    },
+    "isAdmin": {
+      "type": "Boolean"
+    },
+    "createdAt": {
+      "type": "Date"
+    }
+  }
+}

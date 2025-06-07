@@ -76,19 +76,32 @@ function Login() {
             });
             
             // Get user data and token from response
-            const { _id, username, email, token } = response.data;
+            const { _id, username, email, token, isVerified } = response.data;
             
             // Create user data object
             const userData = {
                 id: _id,
                 username,
                 email,
-                token
+                token,
+                isVerified
             };
 
             // Log the user in with the returned data
             login(userData);
-            navigate('/ocr'); // Redirect to OCR page on successful login
+            
+            // Redirect based on verification status
+            if (!isVerified) {
+                // Redirect to verification page if not verified
+                navigate('/verify-code', { 
+                    state: { 
+                        email: email
+                    } 
+                });
+            } else {
+                // Redirect to OCR page if verified
+                navigate('/ocr');
+            }
         } catch (error) {
             console.error('Login error:', error);
             setErrors({
@@ -160,7 +173,7 @@ function Login() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center">
+                        {/* <div className="flex items-center">
                             <input
                                 id="remember-me"
                                 name="remember-me"
@@ -170,7 +183,7 @@ function Login() {
                             <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
                                 Remember me
                             </label>
-                        </div>
+                        </div> */}
 
                         <div className="text-sm">
                             <button 

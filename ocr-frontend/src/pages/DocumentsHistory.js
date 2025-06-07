@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+import RenameModal from "../components/RenameModal";
 
-function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, handleViewDocument }) {
+function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage }) {
     const [itemsPerPage, setItemsPerPage] = useState(() => {
         const savedItemsPerPage = localStorage.getItem('itemsPerPage');
         return savedItemsPerPage ? parseInt(savedItemsPerPage) : 10;
@@ -17,6 +18,12 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState(null);
 
+    // State for rename modal
+    const [showRenameModal, setShowRenameModal] = useState(false);
+    const [fileToRename, setFileToRename] = useState(null);
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [renameError, setRenameError] = useState(null);
+
     // Lưu giá trị itemsPerPage vào localStorage khi thay đổi
     useEffect(() => {
         localStorage.setItem('itemsPerPage', itemsPerPage.toString());
@@ -26,11 +33,55 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
     useEffect(() => {
         // Lọc tài liệu theo từ khóa tìm kiếm
         const filtered = searchTerm
-            ? uploadedFiles.filter(file => 
-                file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                file.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                file.mode.toLowerCase().includes(searchTerm.toLowerCase())
-              )
+            ? uploadedFiles.filter(file => {
+                // Check standard fields
+                const basicMatch = file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                  file.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                  file.mode.toLowerCase().includes(searchTerm.toLowerCase());
+                
+                if (basicMatch) return true;
+                
+                // Check OCR text if available
+                if (file.ocrResult) {
+                    // Check if ocrResult has text property
+                    if (file.ocrResult.text && typeof file.ocrResult.text === 'string') {
+                        return file.ocrResult.text.toLowerCase().includes(searchTerm.toLowerCase());
+                    }
+                    
+                    // Check if ocrResult has markdown property
+                    if (file.ocrResult.markdown && typeof file.ocrResult.markdown === 'string') {
+                        return file.ocrResult.markdown.toLowerCase().includes(searchTerm.toLowerCase());
+                    }
+                    
+                    // If ocrResult is a simple string
+                    if (typeof file.ocrResult === 'string') {
+                        return file.ocrResult.toLowerCase().includes(searchTerm.toLowerCase());
+                    }
+                }
+                
+                // Check local storage for OCR results if not available in the file object
+                const userId = JSON.parse(localStorage.getItem('user'))?.id || 'guest';
+                const resultsKey = `ocrResults_${userId}`;
+                const storedResults = JSON.parse(localStorage.getItem(resultsKey) || '{}');
+                
+                if (storedResults[file.id]) {
+                    const storedResult = storedResults[file.id];
+                    
+                    if (storedResult.text && typeof storedResult.text === 'string') {
+                        return storedResult.text.toLowerCase().includes(searchTerm.toLowerCase());
+                    }
+                    
+                    if (storedResult.markdown && typeof storedResult.markdown === 'string') {
+                        return storedResult.markdown.toLowerCase().includes(searchTerm.toLowerCase());
+                    }
+                    
+                    if (typeof storedResult === 'string') {
+                        return storedResult.toLowerCase().includes(searchTerm.toLowerCase());
+                    }
+                }
+                
+                return false;
+              })
             : [...uploadedFiles];
         
         setFilteredFiles(filtered);
@@ -123,6 +174,76 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
         }
     };
 
+    // Handle opening the rename modal
+    const handleRenameClick = (file) => {
+        setFileToRename(file);
+        setShowRenameModal(true);
+        setRenameError(null);
+    };
+    
+    // Handle closing the rename modal
+    const handleCloseRenameModal = () => {
+        setShowRenameModal(false);
+        setFileToRename(null);
+        setRenameError(null);
+    };
+    
+    // Handle confirming the rename operation
+    const handleConfirmRename = async (newName) => {
+        if (!fileToRename) return;
+        
+        setIsRenaming(true);
+        try {
+            // Get the token from localStorage
+            const token = localStorage.getItem('token');
+            
+            // Call the API to rename the document
+            await axios.put(`http://localhost:5000/api/documents/${fileToRename.id}`, 
+                { name: newName },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
+            
+            // Update the file in local state
+            const updatedFiles = uploadedFiles.map(file => 
+                file.id === fileToRename.id ? { ...file, name: newName } : file
+            );
+            
+            // Update local storage
+            const userId = JSON.parse(localStorage.getItem('user'))?.id || 'guest';
+            const storageKey = `uploadedFiles_${userId}`;
+            localStorage.setItem(storageKey, JSON.stringify(updatedFiles));
+            
+            // Update parent state
+            if (typeof setUploadedFiles === 'function') {
+                setUploadedFiles(updatedFiles);
+            }
+            
+            // Close the modal
+            setShowRenameModal(false);
+            setFileToRename(null);
+        } catch (error) {
+            console.error("Error renaming document:", error);
+            setRenameError(error.response?.data?.error || "Failed to rename the document. Please try again.");
+        } finally {
+            setIsRenaming(false);
+        }
+    };
+
+    const handleViewDocument = (documentId, type) => {
+        // Store the document ID for viewing
+        if (type === "pdf") {
+            localStorage.setItem('currentDocumentId_pdf', documentId);
+            setActivePage('pdf-ocr');
+        } else {
+            localStorage.setItem('currentDocumentId_image', documentId);
+            setActivePage('image-ocr');
+        }
+    }
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
             <div className="p-6">
@@ -132,10 +253,11 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
                         <div className="relative">
                             <input
                                 type="text"
-                                placeholder="Search files..."
+                                placeholder="Search..."
                                 value={searchTerm}
                                 onChange={handleSearch}
                                 className="pl-9 pr-4 py-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                title="Search in filenames, document types, modes, and OCR extracted text content"
                             />
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -203,13 +325,9 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div className="flex space-x-3">
                                             <button 
-                                                onClick={() => handleViewDocument(file.id)}
-                                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 flex items-center"
+                                                onClick={() => handleViewDocument(file.id, file.type)}
+                                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
                                                 View
                                             </button>
                                             {file.driveUrl ? (
@@ -232,6 +350,15 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
                                                     Download
                                                 </button>
                                             )}
+                                            <button 
+                                                onClick={() => handleRenameClick(file)}
+                                                className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 flex items-center"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                                Rename
+                                            </button>
                                             <button 
                                                 onClick={() => handleDeleteClick(file)}
                                                 className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 flex items-center"
@@ -256,7 +383,7 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
                         </svg>
                         <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">No files yet</h3>
                         <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                            {searchTerm ? "No files match your search criteria" : "Upload your first document to start extracting text using OCR technology"}
+                            {searchTerm ? "No files match your search in filenames or document content" : "Upload your first document to start extracting text using OCR technology"}
                         </p>
                         <button 
                             onClick={() => setActivePage('home')}
@@ -328,7 +455,7 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
                                     (pageNumber === currentPage - 2 && currentPage > 3) ||
                                     (pageNumber === currentPage + 2 && currentPage < totalPages - 2)
                                 ) {
-                                    // Hiển thị dấu "..." nếu có nhiều trang
+                                    // Nhiều trang thì "..."
                                     return (
                                         <span 
                                             key={pageNumber}
@@ -366,6 +493,18 @@ function DocumentsHistory({ uploadedFiles, setUploadedFiles, setActivePage, hand
                     documentName={fileToDelete?.name || "this document"}
                     isDeleting={isDeleting}
                     error={deleteError}
+                />
+            )}
+            
+            {/* Rename Modal */}
+            {showRenameModal && (
+                <RenameModal
+                    isOpen={showRenameModal}
+                    onClose={handleCloseRenameModal}
+                    onConfirm={handleConfirmRename}
+                    document={fileToRename}
+                    isRenaming={isRenaming}
+                    error={renameError}
                 />
             )}
         </div>
