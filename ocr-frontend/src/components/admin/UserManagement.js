@@ -40,7 +40,7 @@ function UserManagement() {
         (page, limit) => {
             debouncedFetchFunction(page, limit);
         },
-        [debouncedFetchFunction, fetchUsers]
+        [debouncedFetchFunction]
     );
 
     // Effect to fetch users when pagination changes

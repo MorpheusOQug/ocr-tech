@@ -5,18 +5,23 @@
 ## Cấu trúc dự án
 
 ```
-├── load_model.py (Mô đun tải mô hình OCR)
-├── recognition_image.py (Mô đun nhận diện hình ảnh)
-├── Image_storage/ (Thư mục chứa hình ảnh mẫu)
 ├── ocr-backend/ (Server API backend)
-│   ├── server.py (API FastAPI)
+│   ├── server.js (Node.js Express Server)
+│   ├── server.py (Python FastAPI Server)
+│   ├── load_model.py (Mô đun tải mô hình OCR)
+│   ├── controllers/ (Xử lý logic nghiệp vụ)
+│   ├── models/ (Mô hình dữ liệu)
+│   ├── routes/ (Định tuyến API)
+│   ├── middleware/ (Middleware xử lý)
+│   ├── services/ (Các dịch vụ)
+│   ├── utils/ (Tiện ích)
 │   ├── uploads/ (Thư mục lưu ảnh tải lên)
-│   └── ...
+│   ├── config/ (Cấu hình)
+│   └── scripts/ (Scripts tiện ích)
 └── ocr-frontend/ (Giao diện người dùng)
-    ├── src/
-    │   ├── App.js (Giao diện chính)
-    │   └── ...
-    └── ...
+    ├── src/ (Mã nguồn React)
+    ├── public/ (Tài nguyên tĩnh)
+    └── build/ (Thư mục build)
 ```
 
 ## Tính năng
@@ -27,42 +32,57 @@
 - Hiển thị xem trước hình ảnh
 - Kiểm tra tình trạng kết nối với server backend
 
-## Yêu cầu
+## Yêu cầu hệ thống
 
 ### Backend
-
 - Python 3.8+
-- PyTorch
-- FastAPI
-- Uvicorn
-- transformers
-- PIL (Pillow)
+- Node.js 14+ và npm
+- CUDA toolkit (cho GPU acceleration)
+- Virtual environment (venv) cho Python
 
 ### Frontend
-
-- Node.js
+- Node.js 14+
 - npm hoặc yarn
-- React
 
 ## Cách cài đặt
 
 ### Backend
 
-1. **Cài đặt các thư viện Python cần thiết**:
+1. **Tạo và kích hoạt môi trường ảo Python**:
 
 ```bash
-pip install fastapi uvicorn torch torchvision pillow transformers python-multipart
+# Windows
+python -m venv venv
+.\venv\Scripts\activate
+
+# Linux/Mac
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-2. **Chuẩn bị thư mục uploads** (nếu chưa có):
+2. **Cài đặt các thư viện Python**:
 
 ```bash
-mkdir -p ocr-backend/uploads
+cd ocr-backend
+pip install -r requirements.txt
+```
+
+3. **Cài đặt các dependencies Node.js**:
+
+```bash
+cd ocr-backend
+npm install
+```
+
+4. **Chuẩn bị thư mục uploads**:
+
+```bash
+mkdir -p uploads
 ```
 
 ### Frontend
 
-1. **Cài đặt các packages npm**:
+1. **Cài đặt các dependencies**:
 
 ```bash
 cd ocr-frontend
@@ -73,18 +93,24 @@ npm install
 
 ### Chạy Backend
 
-1. **Khởi động server FastAPI**:
+1. **Khởi động Python FastAPI server** (trong môi trường ảo):
 
 ```bash
-cd ocr-backend
+# Bỏ qua nếu chạy npm run dev rồi, việc này dành riêng cho chạy model Vintern
 python server.py
 ```
 
-Server sẽ chạy ở địa chỉ `http://127.0.0.1:8000`
+2. **Khởi động Node.js server**:
+
+```bash
+# Trong một terminal khác, cũng ở thư mục ocr-backend
+npm run dev
+```
+
+Server FastAPI sẽ chạy ở địa chỉ `http://127.0.0.1:8000`
+Server Node.js sẽ chạy ở địa chỉ `http://localhost:5000`
 
 ### Chạy Frontend
-
-1. **Khởi động React app**:
 
 ```bash
 cd ocr-frontend

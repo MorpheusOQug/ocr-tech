@@ -34,7 +34,7 @@ function DocumentManagement() {
         (page, limit) => {
             debouncedFetchFunction(page, limit);
         },
-        [debouncedFetchFunction, fetchDocuments]
+        [debouncedFetchFunction]
     );
 
     // Effect to fetch documents when pagination changes
@@ -60,9 +60,6 @@ function DocumentManagement() {
 
     // Get user display name from document
     const getUserDisplayName = useCallback((document) => {
-        if (document.user && document.user.username) {
-            return document.user.username;
-        } 
         if (document.userId && typeof document.userId === 'object' && document.userId.username) {
             return document.userId.username;
         }
@@ -71,9 +68,6 @@ function DocumentManagement() {
 
     // Get user email from document
     const getUserEmail = useCallback((document) => {
-        if (document.user && document.user.email) {
-            return document.user.email;
-        }
         if (document.userId && typeof document.userId === 'object' && document.userId.email) {
             return document.userId.email;
         }

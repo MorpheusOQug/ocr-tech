@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+#Yêu cầu cài đặt bản CUDA này để hỗ trợ trong venv
 --extra-index-url https://download.pytorch.org/whl/cu118
 torch
 torchvision

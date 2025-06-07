@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useAdmin } from '../../context/AdminContext';
 import * as d3 from 'd3';
 import tippy from 'tippy.js';
@@ -23,8 +22,7 @@ function SchemaVisualization() {
     const [schemaData, setSchemaData] = useState(null);
     const [usedFallback, setUsedFallback] = useState(false);
     const [layout, setLayout] = useState('grid'); // 'grid' or 'force'
-    const { token } = useAuth();
-    const { loading, error, schema, fetchSchema } = useAdmin();
+    const { loading, error, fetchSchema } = useAdmin();
     const svgRef = useRef(null);
 
     // Add tippy styles to document head

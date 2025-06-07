@@ -16,10 +16,6 @@
       "ref": "User",
       "type": "ObjectId"
     },
-    "user": {
-      "ref": "User",
-      "type": "ObjectId"
-    },
     "ocrResult": {
       "type": "Mixed"
     },

@@ -192,7 +192,7 @@ const getAllDocuments = async (req, res) => {
       ];
     }
     
-    // Use aggregate to properly handle user data from both userId and user fields
+    // Use aggregate to get user data from userId field
     const documentsPromise = Document.aggregate([
       { $match: filter },
       { $sort: { createdAt: -1 } },
@@ -208,7 +208,7 @@ const getAllDocuments = async (req, res) => {
       },
       {
         $addFields: {
-          user: {
+          userId: {
             $cond: {
               if: { $eq: [{ $size: '$userInfo' }, 0] },
               then: null,
@@ -220,7 +220,7 @@ const getAllDocuments = async (req, res) => {
       {
         $project: {
           userInfo: 0,
-          'user.password': 0
+          'userId.password': 0
         }
       }
     ]);
@@ -231,21 +231,8 @@ const getAllDocuments = async (req, res) => {
     // Execute both promises in parallel
     const [documents, total] = await Promise.all([documentsPromise, totalPromise]);
     
-    // Format user data for consistency
-    const processedDocuments = documents.map(doc => {
-      if (doc.user) {
-        // Extract only needed user fields to reduce payload size
-        doc.user = {
-          _id: doc.user._id,
-          username: doc.user.username,
-          email: doc.user.email
-        };
-      }
-      return doc;
-    });
-    
     res.json({
-      documents: processedDocuments,
+      documents,
       pagination: {
         total,
         page,

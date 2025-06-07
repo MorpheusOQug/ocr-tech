@@ -47,12 +47,10 @@ const schema = {
 
 // Add references manually if not detected
 schema.Document.userId.ref = 'User';
-schema.Document.user.ref = 'User';
 schema.IdCard.user.ref = 'User';
 schema.OfficialDocument.user.ref = 'User';
 
 // Write schema to file
 const outputPath = path.join(__dirname, '../model-schema.json');
 fs.writeFileSync(outputPath, JSON.stringify(schema, null, 2));
-
-console.log(`Schema exported to ${outputPath}`); 
+console.log(`Schema written to ${outputPath}`); 
